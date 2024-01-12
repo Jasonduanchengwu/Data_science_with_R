@@ -57,7 +57,7 @@ This exercise (and later in this course) uses the [MIMIC-IV data v2.2](https://p
 1.  Make the MIMIC v2.2 data available at location `~/mimic`.
 
 ```{bash}
-#| eval: False
+#| eval: True
 ls -l ~/mimic/
 ```
 
@@ -67,12 +67,24 @@ Use Bash commands to answer following questions.
 
 2.  Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
 
+```{bash}
+#| eval: True
+ls -l ~/mimic/hosp
+```
+
+```{bash}
+#| eval: True
+ls -l ~/mimic/icu
+```
+
+**Answer:** These data files are distributed as `.csv.gz` because they are stored as compressed `.csv` files, which is without decompressing like the question stated
+
 3.  Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
 
 4.  (Looping in Bash) What's the output of the following bash script?
 
 ```{bash}
-#| eval: false
+#| eval: True
 for datafile in ~/mimic/hosp/{a,l,pa}*.gz
 do
   ls -l $datafile
