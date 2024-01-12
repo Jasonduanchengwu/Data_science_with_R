@@ -81,6 +81,14 @@ ls -l ~/mimic/icu
 
 3.  Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
 
+**Answer:** `zcat` lets users to display contents of compressed files, similar to `cat` it prints the contents out in the terminal.
+
+`zless` allows users to view the contents of the compressed file, similar to the `less` command it opens file in the default text editor (Vi) for Ubuntu.
+
+`zmore` is similar to `zless` but different in the user interface during navigation through the file, `zless` is more like scrolling while `zmore` is like reading documents one page at a time. It is all up to the user's preference.
+
+`zgrep` similar to grep, allows users to search for text/pattern within a compressed file.
+
 4.  (Looping in Bash) What's the output of the following bash script?
 
 ```{bash}
