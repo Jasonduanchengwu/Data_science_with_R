@@ -50,14 +50,14 @@ This exercise (and later in this course) uses the [MIMIC-IV data v2.2](https://p
 
 **Answer (1):** This is my CITI training on Data or Specimens Only Research [Completion Report](https://www.citiprogram.org/verify/?ka5ed0b04-6377-458d-bf58-03bfcd1a5fa6-60370401) and [Completion Certificate](https://www.citiprogram.org/verify/?w9ffd9891-8edb-4345-af5d-637d9ea54ad0-60370401)
 
-**Answer (2):** ![PhysioNet Credential](./physionet_cred.png)
+**Answer (2):** Below is my approval for PhysioNet credentials ![PhysioNet Credential](./physionet_cred.png)
 
 ## Q3. Linux Shell Commands
 
 1.  Make the MIMIC v2.2 data available at location `~/mimic`.
 
 ```{bash}
-#| eval: false
+#| eval: False
 ls -l ~/mimic/
 ```
 
@@ -153,3 +153,5 @@ Try following commands in Bash and interpret the results: `cal`, `cal 2024`, `ca
 The point of this exercise is (1) to get the book for free and (2) to see an example how a complicated project such as a book can be organized in a reproducible way.
 
 For grading purpose, include a screenshot of Section 4.1.5 of the book here.
+
+**Answer:** Below is my screenshot of section 4.1.5 of the book ![section 4.1.5](./hw_q6.png)
