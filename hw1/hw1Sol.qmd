@@ -115,6 +115,34 @@ done
 
 5.  Display the first few lines of `admissions.csv.gz`. How many rows are in this data file? How many unique patients (identified by `subject_id`) are in this data file? Do they match the number of patients listed in the `patients.csv.gz` file? (Hint: combine Linux commands `zcat <`, `head`/`tail`, `awk`, `sort`, `uniq`, `wc`, and so on.)
 
+```{bash}
+#| eval: True
+echo "The first 3 rows of admissions.csv.gz: "
+zcat < ~/mimic/hosp/admissions.csv.gz | head -n 3
+```
+
+```{bash}
+#| eval: True
+echo "The number of rows in this data file: "
+zcat < ~/mimic/hosp/admissions.csv.gz | wc -l
+```
+
+```{bash}
+#| eval: False
+echo "The number of unique patients: "
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $1}' | sort | uniq | wc -l
+# csv lines contains header lines for fields as the first line, thus starting from second line
+```
+```{bash}
+#| eval: False
+echo "The number of unique patients in patients.csv.gz: "
+zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | wc -l
+zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | awk -F',' '{print $1}'| sort| uniq | wc -l
+# shows that they are all unique
+```
+
+They do not match?
+
 6.  What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, and so on; skip the header line.)
 
 7.  *To compress, or not to compress. That's the question.* Let's focus on the big data file `labevents.csv.gz`. Compare compressed gz file size to the uncompressed file size. Compare the run times of `zcat < ~/mimic/labevents.csv.gz | wc -l` versus `wc -l labevents.csv`. Discuss the trade off between storage and speed for big data files. (Hint: `gzip -dk < FILENAME.gz > ./FILENAME`. Remember to delete the large `labevents.csv` file after the exercise.)
