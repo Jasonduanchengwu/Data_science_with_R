@@ -99,6 +99,8 @@ do
 done
 ```
 
+**Answer: ** These code create a loop which named every `.qz` file that matches the pattern which starts either with 'a','l' or 'pa' at the start of the name as datafile. and then did a do loop to list all those files with long format details.
+
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
 
 5.  Display the first few lines of `admissions.csv.gz`. How many rows are in this data file? How many unique patients (identified by `subject_id`) are in this data file? Do they match the number of patients listed in the `patients.csv.gz` file? (Hint: combine Linux commands `zcat <`, `head`/`tail`, `awk`, `sort`, `uniq`, `wc`, and so on.)
