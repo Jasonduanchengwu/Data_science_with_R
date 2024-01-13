@@ -99,11 +99,12 @@ do
 done
 ```
 
-**Answer: ** These code create a loop which named every `.qz` file that matches the pattern which starts either with 'a','l' or 'pa' at the start of the name as datafile. and then did a do loop to list all those files with long format details.
+**Answer:** These code create a loop which named every `.qz` file that matches the pattern which starts either with 'a','l' or 'pa' at the start of the name as datafile. and then did a do loop to list all those files with long format details.
 
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
 
-**Answer: **
+**Answer:**
+
 ```{bash}
 #| eval: True
 for file in ~/mimic/hosp/{a,l,pa}*.gz
@@ -146,7 +147,7 @@ zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | awk -F',' '{print $1}'| sort|
 
 6.  What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, and so on; skip the header line.)
 
-**Answer: **
+**Answer:**
 
 ```{bash}
 #| eval: True
@@ -177,6 +178,33 @@ zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 |awk -F',' '{print $13}'|sort
 ```
 
 7.  *To compress, or not to compress. That's the question.* Let's focus on the big data file `labevents.csv.gz`. Compare compressed gz file size to the uncompressed file size. Compare the run times of `zcat < ~/mimic/labevents.csv.gz | wc -l` versus `wc -l labevents.csv`. Discuss the trade off between storage and speed for big data files. (Hint: `gzip -dk < FILENAME.gz > ./FILENAME`. Remember to delete the large `labevents.csv` file after the exercise.)
+
+**Answer:**
+
+The bash code below ARE reproducible after regenerating `labevents.csv` file with `gzip -dk hosp/labevents.csv.gz > hosp/labevents.csv`. (Since removed after exercise done)
+
+```{bash}
+#| eval: False
+echo "File size of labevents.csv.gz and labevents.csv"
+# $5 is file size while $9 shows the file, -h is human-readable format
+ls -lh ~/mimic/hosp/labevents* | awk '{print $5, $9}'
+```
+
+![](./filesize.png)
+
+```{bash}
+#| eval: False
+echo "Run time of labevents.csv.gz"
+# $5 is file size while $9 shows the file, -h is human-readable format
+time ls -lh ~/mimic/hosp/labevents.csv.gz
+
+echo "Run time of labevents.csv"
+time ls -lh ~/mimic/hosp/labevents.csv
+```
+
+![](./runtime.png)
+
+The storage difference is almost 10 times with 1.9Gb in .csv.gz and 13Gb in .csv while the run time penalty is minimum with 0.001s difference in real world time, so I would prefer to keep the big data files undecompressed in the .csv.gz format
 
 ## Q4. Who's popular in Price and Prejudice
 
