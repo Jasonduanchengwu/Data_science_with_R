@@ -247,6 +247,8 @@ and
 echo 'hello, world' >> test2.txt
 ```
 
+**Answer: ** The `>` will overwrite the file if it exists while `>>` will append/add the output to the file. So `echo 'hello, world' > test1.txt` test1.txt will only contain 'hello, world' no matter what is originally had while `echo 'hello, world' >> test2.txt` will have "hello, world" attached at the end of what it originally have.
+
 3.  Using your favorite text editor (e.g., `vi`), type the following and save the file as `middle.sh`:
 
 ```{bash eval=FALSE}
