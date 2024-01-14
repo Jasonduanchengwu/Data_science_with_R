@@ -129,14 +129,14 @@ zcat < ~/mimic/hosp/admissions.csv.gz | wc -l
 ```
 
 ```{bash}
-#| eval: False
+#| eval: True
 echo "The number of unique patients: "
 zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $1}' | sort | uniq | wc -l
 # csv lines contains header lines for fields as the first line, thus starting from second line
 ```
 
 ```{bash}
-#| eval: False
+#| eval: True
 echo "The number of unique patients in patients.csv.gz: "
 zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | wc -l
 zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | awk -F',' '{print $1}'| sort| uniq | wc -l
@@ -233,6 +233,8 @@ do
 done
 ```
 
+Since pg42671.txt may not be present on other machines, image below shows the output of the commands on my machine
+![](./name_count.png)
 2.  What's the difference between the following two commands?
 
 ```{bash}
@@ -261,7 +263,7 @@ head -n "$2" "$1" | tail -n "$3"
 Using `chmod` to make the file executable by the owner, and run
 
 ```{bash}
-#| eval: false
+#| eval: True
 cd ~/biostat-203b_hw/hw1
 ./middle.sh ~/pg42671.txt 20 5
 ```
@@ -277,6 +279,108 @@ The output basically displays the last 5 lines of the first 20 lines of `~/pg426
 ## Q5. More fun with Linux
 
 Try following commands in Bash and interpret the results: `cal`, `cal 2024`, `cal 9 1752` (anything unusual?), `date`, `hostname`, `arch`, `uname -a`, `uptime`, `who am i`, `who`, `w`, `id`, `last | head`, `echo {con,pre}{sent,fer}{s,ed}`, `time sleep 5`, `history | tail`.
+
+```{bash}
+#| eval: True
+cal
+```
+**Answer: ** `cal` displays the current month calendar
+
+```{bash}
+#| eval: True
+cal 2024
+```
+**Answer: **`cal 2024` shows the calendar of year 2024
+
+```{bash}
+#| eval: True
+cal 9 1752
+```
+**Answer: ** `cal 9 1752` shows september(9th month) calendar of 1752. There is a historic adjustment specific to the transition to the Gregorian calendar and is not the standard calendar behavior.
+
+```{bash}
+#| eval: True
+date
+```
+**Answer: ** show the current day, date, time, timezone and year of point of execution
+
+```{bash}
+#| eval: True
+hostname
+```
+**Answer: ** show the current host/system name
+
+```{bash}
+#| eval: True
+arch
+```
+**Answer: ** shows system architecture which essentially is the machine hardware name.
+
+```{bash}
+#| eval: True
+uname -a
+```
+**Answer: ** shows system information and `-a` flag refers to all. It will show the operating system, hostname of machine, kernel version, more information of the kernal and built date, machine hardware name (architecture), processor architecture and indication for system running of Linux kernel
+
+```{bash}
+#| eval: True
+uptime
+```
+**Answer: ** shows the current time, how long the system has been up and running, how many users, and the load average. Load average essentially is the average number of processes in the run queue over the specific time periods, which in this case is 1,5, and 15 minutes respectively
+
+```{bash}
+#| eval: True
+who am i
+```
+**Answer: ** typically shows the user name, the terminal line asscociated with the session, login timestamp and the display number, however in this case, since we are running this command in a script or WSL, there is no output since it is a non-interactive shell.
+
+```{bash}
+#| eval: True
+who
+```
+**Answer: ** shows kinda the same informations as who am i but `who` lists all users who are currently logged in while `who am i` focuses on the current user's terminal session.
+
+```{bash}
+#| eval: True
+w
+```
+**Answer: ** shows the currently logged in users and the processes, it includes username, terminal,  source ip address, time of login, idle time, total CPU time used, percentage CPU time used, and information about current activities. It seems to show the uptime additionally too. 
+
+```{bash}
+#| eval: True
+id
+```
+**Answer: ** it shows the user's userid, group id ,and ids of the groups that the user is a member of.
+
+```{bash}
+#| eval: True
+last
+```
+**Answer: ** shows a list of recent logins, reboots or shutdowns with username, source IP, login time and session duration.
+
+```{bash}
+#| eval: False
+head
+```
+**Answer: ** just shows the first indicated number of lines of a file or output.
+
+```{bash}
+#| eval: True
+echo {con,pre}{sent,fer}{s,ed}
+```
+**Answer: ** prints all the possible combination of concatenations the different braces can form. 
+
+```{bash}
+#| eval: True
+time sleep 5
+```
+**Answer: ** This times the time taken for the sleep command to delay 5 seconds which logically it will show around 5 seconds. sleep command could be useful for automation scripting where waiting is required for the next input.
+
+```{bash}
+#| eval: True
+history | tail
+```
+**Answer: ** This will display the last few commands from my command history, while this will not work in a script like environment as scripts are non-interactive.
 
 ## Q6. Book
 
