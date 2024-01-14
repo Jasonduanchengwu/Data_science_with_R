@@ -143,7 +143,7 @@ zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | awk -F',' '{print $1}'| sort|
 # shows that they are all unique
 ```
 
-**Answer:** They do not match?
+**Answer:** They do not match.
 
 6.  What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, and so on; skip the header line.)
 
@@ -204,7 +204,7 @@ time ls -lh ~/mimic/hosp/labevents.csv
 
 ![](./runtime.png)
 
-The storage difference is almost 10 times with 1.9Gb in .csv.gz and 13Gb in .csv while the run time penalty is minimum with 0.001s difference in real world time, so I would prefer to keep the big data files undecompressed in the .csv.gz format
+The storage difference is almost 10 times with 1.9Gb in .csv.gz and 13Gb in .csv while the run time penalty is minimum with 0.001s difference in real world time, so I would prefer to keep the big data files compressed in the .csv.gz format
 
 ## Q4. Who's popular in Price and Prejudice
 
@@ -212,18 +212,24 @@ The storage difference is almost 10 times with 1.9Gb in .csv.gz and 13Gb in .csv
 
 ```{bash}
 #| eval: false
-wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
+wget -nc -P ~/ http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 ```
 
 Explain what `wget -nc` does. Do **not** put this text file `pg42671.txt` in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.
 
+**Answer: ** `wget -nc` downloads a file from the web and `-nc` is a flag to indicate that we do not want to overwrite existing file.
+
 ```{bash}
 #| eval: false
-wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
+# -P indicates where to save the file
+wget -nc -P ~/ http://www.gutenberg.org/cache/epub/42671/pg42671.txt
+
+# -n allows for outputs to be on the same line
+# -o only outputs the matched part and -w is matching the whole word
 for char in Elizabeth Jane Lydia Darcy
 do
-  echo $char:
-  # some bash commands here
+  echo -n "$char: "
+  grep -o -w $char ~/pg42671.txt | wc -l
 done
 ```
 
