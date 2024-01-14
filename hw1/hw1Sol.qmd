@@ -262,10 +262,17 @@ Using `chmod` to make the file executable by the owner, and run
 
 ```{bash}
 #| eval: false
-./middle.sh pg42671.txt 20 5
+cd ~/biostat-203b_hw/hw1
+./middle.sh ~/pg42671.txt 20 5
 ```
 
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
+
+**Answer: ** `"$1"`, `"$2"`, and `"$3"` refers to the first, second and third argument in the script execution, namely `~/pg42671.txt`, `20` and `5` in this case based on their positions. 
+
+`#!/bin/sh` is used to indicate the interpreter to use to execute the script which in this case it is the path to the Bourne shell which is a compatible shell to run the script on. If we do not include the first row, the system would use the default shell to execute the script which lags clarity and may lead to output that user did not intent to have.
+
+The output basically displays the last 5 lines of the first 20 lines of `~/pg42671.txt`.
 
 ## Q5. More fun with Linux
 
