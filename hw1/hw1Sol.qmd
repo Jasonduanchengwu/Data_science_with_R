@@ -332,7 +332,7 @@ uptime
 #| eval: True
 who am i
 ```
-**Answer: ** typically shows the user name, the terminal line asscociated with the session, login timestamp and the display number, however in this case, since we are running this command in a script or WSL, there is no output since it is a non-interactive shell.
+**Answer: ** typically shows the user name, the terminal line asscociated with the session, login timestamp and the display number, however in this case, since we are running this command in a script or WSL, there is no output since WSL works slightly differently than linux, this command does not work on ubuntu terminal as well.
 
 ```{bash}
 #| eval: True
@@ -380,7 +380,9 @@ time sleep 5
 #| eval: True
 history | tail
 ```
-**Answer: ** This will display the last few commands from my command history, while this will not work in a script like environment as scripts are non-interactive.
+**Answer: ** This will display the last few commands from my command history, while this will not work in a script like environment as scripts are non-interactive. However this works in Terminal, the output is below: 
+
+![](./his_tail.png)
 
 ## Q6. Book
 
