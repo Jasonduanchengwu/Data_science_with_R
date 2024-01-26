@@ -220,13 +220,13 @@ Explain what `wget -nc` does. Do **not** put this text file `pg42671.txt` in Git
 **Answer: ** `wget -nc` downloads a file from the web and `-nc` is a flag to indicate that we do not want to overwrite existing file.
 
 ```{bash}
-#| eval: false
+#| eval: True
 # -P indicates where to save the file
 wget -nc -P ~/ http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 
 # -n allows for outputs to be on the same line
 # -o only outputs the matched part and -w is matching the whole word
-for char in Elizabeth Jane Lydia Darcy
+for char in 'Elizabeth' 'Jane' 'Lydia' 'Darcy'
 do
   echo -n "$char: "
   grep -o -w $char ~/pg42671.txt | wc -l
@@ -267,7 +267,7 @@ Using `chmod` to make the file executable by the owner, and run
 cd ~/biostat-203b_hw/hw1
 ./middle.sh ~/pg42671.txt 20 5
 ```
-
+![](./middle_output.png)
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
 
 **Answer: ** `"$1"`, `"$2"`, and `"$3"` refers to the first, second and third argument in the script execution, namely `~/pg42671.txt`, `20` and `5` in this case based on their positions. 
