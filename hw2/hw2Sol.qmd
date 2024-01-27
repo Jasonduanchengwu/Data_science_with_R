@@ -1,7 +1,7 @@
 ---
 title: "Biostat 203B Homework 2"
 subtitle: Due Feb 9 @ 11:59PM
-author: "Your NAME and UID"
+author: "Chengwu Duan (Jason) and 606332825"
 format:
   html:
     theme: cosmo
@@ -24,7 +24,7 @@ execute:
 ---
 
 Display machine information for reproducibility:
-```{r}
+```{r, eval=T}
 sessionInfo()
 ```
 
@@ -39,7 +39,7 @@ library(tidyverse)
 ```
 
 Display memory information of your computer
-```{r}
+```{r, eval=T}
 memuse::Sys.meminfo()
 ```
 
@@ -48,10 +48,12 @@ In this exercise, we explore various tools for ingesting the [MIMIC-IV](https://
 Display the contents of MIMIC `hosp` and `icu` data folders:
 
 ```{bash}
+#| eval: True
 ls -l ~/mimic/hosp/
 ```
 
 ```{bash}
+#| eval: True
 ls -l ~/mimic/icu/
 ```
 
@@ -61,7 +63,42 @@ ls -l ~/mimic/icu/
 
 There are quite a few utilities in R for reading plain text data files. Let us test the speed of reading a moderate sized compressed csv file, `admissions.csv.gz`, by three functions: `read.csv` in base R, `read_csv` in tidyverse, and `fread` in the data.table package.
 
+**Answer: **
+
+```{r, eval=TRUE}
+cat("Time taken for read.csv: ", "\n")
+system.time(read.csv("~/mimic/hosp/admissions.csv.gz"))
+cat("\n")
+cat("Time taken for read_csv from tidyverse: ", "\n")
+system.time(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+cat("\n")
+cat("Time taken for fread from data.table: ", "\n")
+system.time(fread("~/mimic/hosp/admissions.csv.gz"))
+
+cat("\n")
+cat("data type for read.csv: ", "\n")
+class(read.csv("~/mimic/hosp/admissions.csv.gz"))
+cat("\n")
+cat("data type for read_csv from tidyverse: ", "\n")
+class(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+cat("\n")
+cat("data type for fread from data.table: ", "\n")
+class(fread("~/mimic/hosp/admissions.csv.gz"))
+
+cat("\n")
+cat("memory usage for read.csv: ", "\n")
+object_size(read.csv("~/mimic/hosp/admissions.csv.gz"))
+cat("\n")
+cat("memory usage for read_csv from tidyverse: ", "\n")
+object_size(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+cat("\n")
+cat("memory usage for fread from data.table: ", "\n")
+object_size(fread("~/mimic/hosp/admissions.csv.gz"))
+```
+
 Which function is fastest? Is there difference in the (default) parsed data types? How much memory does each resultant dataframe or tibble use? (Hint: `system.time` measures run times; `pryr::object_size` measures memory usage.) 
+
+**Answer: ** fread is the fastest. There is sutile difference in the parsed data types, for read.csv creates a data.frame, while read_csv creates a tibble which is represented by "spec_tbl_df" "tbl_df" "tbl" "data.frame", and fread produces a data.table data which is still a type of data.frame.
 
 ### Q1.2 User-supplied data types
 
