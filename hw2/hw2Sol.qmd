@@ -98,7 +98,7 @@ object_size(fread("~/mimic/hosp/admissions.csv.gz"))
 
 Which function is fastest? Is there difference in the (default) parsed data types? How much memory does each resultant dataframe or tibble use? (Hint: `system.time` measures run times; `pryr::object_size` measures memory usage.) 
 
-**Answer: ** fread is the fastest. There is sutile difference in the parsed data types, for read.csv creates a data.frame, while read_csv creates a tibble which is represented by "spec_tbl_df" "tbl_df" "tbl" "data.frame", and fread produces a data.table data which is still a type of data.frame.
+**Answer: ** fread is the fastest. There is sutile difference in the parsed data types, for read.csv creates a data.frame, while read_csv creates a tibble which is represented by "spec_tbl_df" "tbl_df" "tbl" "data.frame", and fread produces a data.table data. They are all types of data.frame. Memory usages are displayed from the code.
 
 ### Q1.2 User-supplied data types
 
