@@ -104,6 +104,40 @@ Which function is fastest? Is there difference in the (default) parsed data type
 
 Re-ingest `admissions.csv.gz` by indicating appropriate column data types in `read_csv`. Does the run time change? How much memory does the result tibble use? (Hint: `col_types` argument in `read_csv`.)
 
+```{r, eval=TRUE}
+columns = cols(
+  subject_id = col_integer(),
+  hadm_id = col_integer(),
+  admission_type = col_factor(),
+  admission_location = col_factor(),
+  discharge_location = col_factor(),
+  insurance = col_factor(),
+  language = col_factor(),
+  marital_status = col_factor(),
+  race = col_factor(),
+  hospital_expire_flag = col_factor()
+)
+read_csv("~/mimic/hosp/admissions.csv.gz", col_types = columns)
+
+cat("Run time of read_csv default\n")
+system.time(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+cat("\n")
+
+cat("memory usage of read_csv default\n")
+object_size(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+cat("\n")
+
+cat("Run time of read_csv with columns specified\n")
+system.time(read_csv("~/mimic/hosp/admissions.csv.gz", col_types = columns, show_col_types = F))
+cat("\n")
+
+cat("memory usage of read_csv with columns specified\n")
+object_size(read_csv("~/mimic/hosp/admissions.csv.gz", col_types = columns, show_col_types = F))
+```
+**Answer: ** 
+
+Run time with column specified will be slightly faster (most of the time), while the memory usage is much smaller, since we specified for IDs to be stored in integers as there will not be floating points and more than 32 bits of values. Integers occupies 4 bytes than 8 bytes in double. We also changed character strings to factor values, in essence, character vectors are stored each string value in full while factor values store unique strings as levels with integer representing each. The exact memory usages are shown in the code above.
+
 ## Q2. Ingest big data files
 
 <p align="center">
