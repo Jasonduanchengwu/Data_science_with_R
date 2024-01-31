@@ -187,10 +187,16 @@ Our first strategy to handle this big data file is to make a subset of the `labe
 In later exercises, we will only be interested in the following lab items: creatinine (50912), potassium (50971), sodium (50983), chloride (50902), bicarbonate (50882), hematocrit (51221), white blood cell count (51301), and glucose (50931) and the following columns: `subject_id`, `itemid`, `charttime`, `valuenum`. Write a Bash command to extract these columns and rows from `labevents.csv.gz` and save the result to a new file `labevents_filtered.csv.gz` in the current working directory. (Hint: use `zcat <` to pipe the output of `labevents.csv.gz` to `awk` and then to `gzip` to compress the output. To save render time, put `#| eval: false` at the beginning of this code chunk.)
 
 ```{bash}
+#| eval: true
+# to check the fields
+zcat < ~/mimic/hosp/labevents.csv.gz | head -n 10
+```
+
+```{bash}
 #| eval: false
-zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, 'BEGIN {OFS=","} NR=1 \
-|| $2=="50912" || $2=="50971" || $2=="50983" || $2=="50902" || $2=="50882" \
-|| $2=="51221" || $2=="51301" || $2=="50931" {print $1, $2, $3, $4}' \
+zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, 'BEGIN {OFS=","} NR==1 \
+|| $5==50912 || $5==50971 || $5==50983 || $5==50902 || $5==50882 \
+|| $5==51221 || $5==51301 || $5==50931 {print $2, $5, $7, $10}' \
 | gzip > labevents_filtered.csv.gz
 ```
 
@@ -220,9 +226,43 @@ system.time(read_csv("labevents_filtered.csv.gz", show_col_types = F))
 
 Our second strategy is to use [Apache Arrow](https://arrow.apache.org/) for larger-than-memory data analytics. Unfortunately Arrow does not work with gz files directly. First decompress `labevents.csv.gz` to `labevents.csv` and put it in the current working directory. To save render time, put `#| eval: false` at the beginning of this code chunk.
 
+```{bash}
+#| eval: false
+gunzip -c ~/mimic/hosp/labevents.csv.gz > labevents.csv
+```
+
 Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_dataset.html) to ingest `labevents.csv`, select columns, and filter `itemid` as in Q2.3. How long does the ingest+select+filter process take? Display the number of rows and the first 10 rows of the result tibble, and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
+```{r, eval=TRUE}
+library(arrow)
+library(dplyr)
+
+# measure time
+cat("Time taken for the ingest+select+filter process\n")
+system.time({
+  labevents = open_dataset("labevents.csv", format="csv")
+  
+  # select columns and filter using dplyer
+  labevents_filtered = labevents %>%
+    select(subject_id, itemid, charttime,valuenum) %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931))
+})
+
+# converting arrow dataset object into tibble
+labevents_tibble = as_tibble(labevents_filtered)
+```
+
+```{r, eval=True}
+# number of rows
+# add 1 because nrow() excludes header row
+nrow(labevents_tibble) + 1
+
+# cat first 10 rows
+head(labevents_tibble, 10)
+```
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
+
+**Answer: ** Apache Arrow is like an experienced driver that can drive passengers in this case the data quickly and smoothly between destinations. It is also a great communicator who knows a lot of different languages and knows the streets (environment) very well. So it can allow different system to share and process data quickly and efficiently and it can manage diverse data formats.
 
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
 
