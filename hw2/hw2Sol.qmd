@@ -171,7 +171,7 @@ system.time(read_csv("~/mimic/hosp/labevents.csv.gz"))
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
 
-```{r, eval=T}
+```{r, eval=F}
 system.time(read_csv("~/mimic/hosp/labevents.csv.gz", 
                      col_select = c(subject_id, itemid, charttime, valuenum)))
 ```
@@ -211,6 +211,7 @@ zcat < labevents_filtered.csv.gz | wc -l
 cat("Run time for to ingest labevents_filtered.csv.gz\n")
 system.time(read_csv("labevents_filtered.csv.gz", show_col_types = F))
 ```
+
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
 
 <p align="center">
