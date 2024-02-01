@@ -206,8 +206,8 @@ Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many
 
 ```{bash}
 #| eval: true
-echo "First 10 lines of the file:"
-zcat < labevents_filtered.csv.gz | head -n 10
+echo "First 10 lines of the file excluding the header row:"
+zcat < labevents_filtered.csv.gz | tail -n +2 | head -n 10
 
 echo "Number of lines in the new file:"
 zcat < labevents_filtered.csv.gz | wc -l
@@ -401,7 +401,14 @@ labevents_duckdb %>%
   collect() %>%
   print()
 ```
+
+```{r, eval=TRUE}
+# clear current workspace to ease up memory
+rm(list = ls())
+```
+
 **Did not match!!**
+
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
 
 **Answer: ** DuckDB is like a in-built calculator and storage both in one, where you can store large amount of data and run directly within applications such as in R studio, it can allow for complex queries and supports SQL, which is useful for data manipulation and management.
@@ -413,10 +420,30 @@ Write a few sentences to explain what is DuckDB. Imagine you want to explain it 
 zcat < ~/mimic/icu/chartevents.csv.gz | head -10
 ```
 [`d_items.csv.gz`](https://mimic.mit.edu/docs/iv/modules/icu/d_items/) is the dictionary for the `itemid` in `chartevents.csv.gz`.
+
 ```{bash}
 zcat < ~/mimic/icu/d_items.csv.gz | head -10
 ```
 In later exercises, we are interested in the vitals for ICU patients: heart rate (220045), mean non-invasive blood pressure (220181), systolic non-invasive blood pressure (220179), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items, using the favorite method you learnt in Q2. 
 
+**Disclaimer: ** chartevents.csv is 28.1 GB so I think I prefer the Q2.3 method where we use bash to create a subset in .gz format since our source file is in .gz format, it is way more storage efficient.
+
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
 
+```{bash}
+#| eval: false
+zcat < ~/mimic/icu/chartevents.csv.gz | awk -F, 'BEGIN {OFS=","} NR==1 \
+|| $7==220045 || $7==220181 || $7==220179 || $7==223761 \
+|| $7==220210 {print}' \
+| gzip > chartevents_filtered.csv.gz
+```
+
+```{bash}
+echo "number of rows including the header row"
+zcat < chartevents_filtered.csv.gz | wc -l
+```
+
+```{bash}
+echo "first 10 rows of chartevents_filtered"
+zcat < chartevents_filtered.csv.gz | head -n 10
+```
