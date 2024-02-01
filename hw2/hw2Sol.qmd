@@ -330,6 +330,11 @@ labevents_parquet %>%
 **Disclaimer: ** Due to the timezone difference, there is a difference in the charttime section of the dataset, specifically the time part. Besides that the rows match and the two files have the same number of rows.
 
 ```{r, eval=TRUE}
+# clear current workspace to ease up memory
+rm(list = ls())
+```
+
+```{r, eval=TRUE}
 # size of all arrow dataset
 calculate_directory_size <- function(dir_path) {
   # List all files in the directory, including subdirectories
@@ -371,7 +376,35 @@ Write a few sentences to explain what is the Parquet format. Imagine you want to
 
 Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](https://arrow.apache.org/docs/r/reference/to_duckdb.html), select columns, and filter rows as in Q2.5. How long does the ingest+convert+select+filter process take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
+```{r,eval=TRUE}
+library(duckdb)
+
+# measure time
+cat("Time taken for the ingest+select+filter process\n")
+system.time({
+  lab_temp = open_dataset("labevents_parquet", format = "parquet")
+  conn = dbConnect(duckdb())
+  labevents = to_duckdb(lab_temp, con=conn)
+    # select columns and filter using dplyer
+  labevents_duckdb = labevents %>%
+    select(subject_id, itemid, charttime,valuenum) %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931))
+})
+```
+```{r, eval=TRUE}
+# number of rows
+nrow(labevents_duckdb)+1
+
+# first 10 rows
+labevents_duckdb %>%
+  head(10) %>%
+  collect() %>%
+  print()
+```
+**Did not match!!**
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
+
+**Answer: ** DuckDB is like a in-built calculator and storage both in one, where you can store large amount of data and run directly within applications such as in R studio, it can allow for complex queries and supports SQL, which is useful for data manipulation and management.
 
 ## Q3. Ingest and filter `chartevents.csv.gz`
 
