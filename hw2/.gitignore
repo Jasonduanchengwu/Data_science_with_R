@@ -1,2 +1,5 @@
 labevents*
 chartevents*
+*.parquet
+*.csv
+*.csv.gz
