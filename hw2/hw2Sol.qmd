@@ -233,10 +233,15 @@ gunzip -c ~/mimic/hosp/labevents.csv.gz > labevents.csv
 
 Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_dataset.html) to ingest `labevents.csv`, select columns, and filter `itemid` as in Q2.3. How long does the ingest+select+filter process take? Display the number of rows and the first 10 rows of the result tibble, and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
+```{r}
+# clear current workspace to ease up memory
+rm(list = ls())
+```
+
 ```{r, eval=TRUE}
 library(arrow)
 library(dplyr)
-
+library(lubridate)
 # measure time
 cat("Time taken for the ingest+select+filter process\n")
 system.time({
@@ -250,16 +255,27 @@ system.time({
 
 # converting arrow dataset object into tibble
 labevents_tibble = as_tibble(labevents_filtered)
+labevents_tibble$charttime = with_tz(labevents_tibble$charttime, tzone = "America/Los_Angeles")
 ```
 
 ```{r, eval=True}
 # number of rows
 # add 1 because nrow() excludes header row
-nrow(labevents_tibble) + 1
+nrow(labevents_filtered) + 1
 
 # cat first 10 rows
-head(labevents_tibble, 10)
+labevents_filtered %>%
+  head(10) %>%
+  collect() %>%
+  print()
 ```
+
+```{r, eval = F}
+Sys.timezone()
+```
+![](./timezone.png)
+**Disclaimer: ** Due to the timezone difference, there is a difference in the charttime section of the dataset, specifically the time part. Besides that the rows match and the two files have the same number of rows.
+
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
 
 **Answer: ** Apache Arrow is like an experienced driver that can drive passengers in this case the data quickly and smoothly between destinations. It is also a great communicator who knows a lot of different languages and knows the streets (environment) very well. So it can allow different system to share and process data quickly and efficiently and it can manage diverse data formats.
@@ -272,7 +288,80 @@ Write a few sentences to explain what is Apache Arrow. Imagine you want to expla
 
 Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arrow::write_dataset`](https://arrow.apache.org/docs/r/reference/write_dataset.html).) How large is the Parquet file(s)? How long does the ingest+select+filter process of the Parquet file(s) take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
+```{r}
+# clear current workspace to ease up memory
+rm(list = ls())
+```
+
+```{r,eval=TRUE}
+library(arrow)
+library(dplyr)
+
+# write data as parquet format
+labevents_p = open_dataset("labevents.csv", format = "csv")
+write_dataset(labevents_p, "labevents_parquet")
+```
+
+```{r,eval=TRUE}
+# measure time
+cat("Time taken for the ingest+select+filter process\n")
+system.time({
+  lab_temp = open_dataset("labevents_parquet", format = "parquet")
+  
+    # select columns and filter using dplyer
+  labevents_parquet = lab_temp %>%
+    select(subject_id, itemid, charttime,valuenum) %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931))
+})
+
+```
+
+```{r, eval=TRUE}
+# number of rows
+nrow(labevents_parquet) +1
+
+# first 10 rows
+labevents_parquet %>%
+  head(10) %>%
+  collect() %>%
+  print()
+```
+
+**Disclaimer: ** Due to the timezone difference, there is a difference in the charttime section of the dataset, specifically the time part. Besides that the rows match and the two files have the same number of rows.
+
+```{r, eval=TRUE}
+# size of all arrow dataset
+calculate_directory_size <- function(dir_path) {
+  # List all files in the directory, including subdirectories
+  files <- list.files(dir_path, recursive = TRUE, full.names = TRUE)
+  
+  # Get the size of each file
+  file_sizes <- file.info(files)$size
+  
+  # Calculate the total size
+  total_size <- sum(file_sizes)
+  
+  # Convert to more readable units (e.g., GB)
+  total_size_gb <- total_size / (1024^3)
+  
+  return(total_size_gb)
+}
+
+# Replace "path/to/your/dataset_directory" with the path to your Arrow dataset directory
+dataset_size_gb <- calculate_directory_size("./labevents_parquet")
+
+# Print the size in GB
+print(paste("Dataset size:", dataset_size_gb, "GB"))
+
+```
+![](./output_datasize.png)
+
+Dataset size matches what file property claims.
+
+![](./parquet_size.png)
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
+
+**Answer: ** Parquet format is like a smart bookshelf for digital data where you can organize for easy selective data access, you can grab what you want easily while saving space. It can save time and space.
 
 ### Q2.6 DuckDB
 
