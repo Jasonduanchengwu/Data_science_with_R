@@ -74,33 +74,44 @@ library(R.utils)
 library(tidyverse)
 
 cat("Time taken for read.csv: ", "\n")
-system.time(read.csv("~/mimic/hosp/admissions.csv.gz"))
-cat("\n")
+system.time(
+  read.csv("~/mimic/hosp/admissions.csv.gz"))
+
 cat("Time taken for read_csv from tidyverse: ", "\n")
-system.time(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
-cat("\n")
+system.time(
+  read_csv("~/mimic/hosp/admissions.csv.gz", 
+           show_col_types = F))
+
 cat("Time taken for fread from data.table: ", "\n")
-system.time(fread("~/mimic/hosp/admissions.csv.gz"))
+system.time(
+  fread("~/mimic/hosp/admissions.csv.gz"))
 
-cat("\n")
 cat("data type for read.csv: ", "\n")
-class(read.csv("~/mimic/hosp/admissions.csv.gz"))
-cat("\n")
-cat("data type for read_csv from tidyverse: ", "\n")
-class(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
-cat("\n")
-cat("data type for fread from data.table: ", "\n")
-class(fread("~/mimic/hosp/admissions.csv.gz"))
+class(
+  read.csv("~/mimic/hosp/admissions.csv.gz"))
 
-cat("\n")
+cat("data type for read_csv from tidyverse: ", "\n")
+class(
+  read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+
+cat("data type for fread from data.table: ", "\n")
+class(
+  fread("~/mimic/hosp/admissions.csv.gz"))
+
 cat("memory usage for read.csv: ", "\n")
-object_size(read.csv("~/mimic/hosp/admissions.csv.gz"))
-cat("\n")
+object_size(
+  read.csv("~/mimic/hosp/admissions.csv.gz"))
+
 cat("memory usage for read_csv from tidyverse: ", "\n")
-object_size(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
-cat("\n")
+object_size(
+  read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
+
 cat("memory usage for fread from data.table: ", "\n")
-object_size(fread("~/mimic/hosp/admissions.csv.gz"))
+object_size(
+  fread("~/mimic/hosp/admissions.csv.gz"))
+
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
 
 Which function is fastest? Is there difference in the (default) parsed data types? How much memory does each resultant dataframe or tibble use? (Hint: `system.time` measures run times; `pryr::object_size` measures memory usage.) 
@@ -131,22 +142,28 @@ columns = cols(
   race = col_factor(),
   hospital_expire_flag = col_factor()
 )
-read_csv("~/mimic/hosp/admissions.csv.gz", col_types = columns)
+read_csv("~/mimic/hosp/admissions.csv.gz", 
+         col_types = columns)
 
 cat("Run time of read_csv default\n")
-system.time(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
-cat("\n")
+system.time(
+  read_csv("~/mimic/hosp/admissions.csv.gz", 
+                     show_col_types = F))
 
 cat("memory usage of read_csv default\n")
-object_size(read_csv("~/mimic/hosp/admissions.csv.gz", show_col_types = F))
-cat("\n")
+object_size(
+  read_csv("~/mimic/hosp/admissions.csv.gz", 
+                     show_col_types = F))
 
 cat("Run time of read_csv with columns specified\n")
-system.time(read_csv("~/mimic/hosp/admissions.csv.gz", col_types = columns, show_col_types = F))
-cat("\n")
+system.time(
+  read_csv("~/mimic/hosp/admissions.csv.gz", 
+                     col_types = columns, show_col_types = F))
 
 cat("memory usage of read_csv with columns specified\n")
-object_size(read_csv("~/mimic/hosp/admissions.csv.gz", col_types = columns, show_col_types = F))
+object_size(
+  read_csv("~/mimic/hosp/admissions.csv.gz", 
+                     col_types = columns, show_col_types = F))
 
 # clear current workspace to ease up memory
 rm(list = ls())
@@ -181,26 +198,33 @@ Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes mor
 ```{r,eval=F}
 library(tidyverse)
 
-system.time(read_csv("~/mimic/hosp/labevents.csv.gz"))
+system.time(
+  read_csv("~/mimic/hosp/labevents.csv.gz"))
+
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
 
-**Answer: ** The program takes a long time to run and my machine was unable to run it.
+**Answer: ** The program takes a long time to run and my machine was unable to run it. The file is too large for my machine's memory to handle.
 
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
 
-```{r, eval=T}
-library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
+```{r, eval=F}
+
 library(tidyverse)
 
-system.time(read_csv("~/mimic/hosp/labevents.csv.gz", 
-                     col_select = c(subject_id, itemid, charttime, valuenum)))
+system.time(
+  read_csv("~/mimic/hosp/labevents.csv.gz", 
+                     col_select = c(subject_id, itemid,
+                                    charttime, valuenum)))
+
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
+
+**Answer: ** This did not solve the issue, my windows machine runs this code chunk in WSL unbuntu rstudio-server, the available RAM to use is only 6.8 gb, it is unable to run in 3 attempts.
 
 ### Q2.3 Ingest subset of `labevents.csv.gz`
 
@@ -219,7 +243,7 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -n 10
 ```
 
 ```{bash}
-#| eval: false
+#| eval: true
 zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, 'BEGIN {OFS=","} NR==1 \
 || $5==50912 || $5==50971 || $5==50983 || $5==50902 || $5==50882 \
 || $5==51221 || $5==51301 || $5==50931 {print $2, $5, $7, $10}' \
@@ -240,15 +264,14 @@ zcat < labevents_filtered.csv.gz | wc -l
 ```
 
 ```{r,eval=TRUE}
-library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
 library(tidyverse)
 
 cat("Run time for to ingest labevents_filtered.csv.gz\n")
-system.time(read_csv("labevents_filtered.csv.gz", show_col_types = F))
+system.time(
+  read_csv("labevents_filtered.csv.gz", show_col_types = F))
+
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
 
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
@@ -279,25 +302,23 @@ library(lubridate)
 # measure time
 cat("Time taken for the ingest+select+filter process\n")
 system.time({
-  labevents = open_dataset("labevents.csv", format="csv")
+  labevents = open_dataset("labevents.csv", format = "csv")
   
   # select columns and filter using dplyer
   labevents_filtered = labevents %>%
-    select(subject_id, itemid, charttime,valuenum) %>%
-    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931))
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 
+                         50882, 51221, 51301, 50931))
 })
 
 # converting arrow dataset object into tibble
 labevents_tibble = as_tibble(labevents_filtered)
-labevents_tibble$charttime = with_tz(labevents_tibble$charttime, tzone = "America/Los_Angeles")
+labevents_tibble$charttime = with_tz(labevents_tibble$charttime, 
+                                     tzone = "America/Los_Angeles")
 ```
 
-```{r, eval=True}
+```{r, eval=T}
 library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
 library(tidyverse)
 
 # number of rows
@@ -309,6 +330,9 @@ labevents_filtered %>%
   head(10) %>%
   collect() %>%
   print()
+
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
 
 ```{r, eval = F}
@@ -345,10 +369,6 @@ write_dataset(labevents_p, "labevents_parquet")
 
 ```{r,eval=TRUE}
 library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
 library(tidyverse)
 
 # measure time
@@ -359,17 +379,14 @@ system.time({
     # select columns and filter using dplyer
   labevents_parquet = lab_temp %>%
     select(subject_id, itemid, charttime,valuenum) %>%
-    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931))
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 
+                         50882, 51221, 51301, 50931))
 })
 
 ```
 
 ```{r, eval=TRUE}
 library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
 library(tidyverse)
 
 # number of rows
@@ -380,6 +397,9 @@ labevents_parquet %>%
   head(10) %>%
   collect() %>%
   print()
+
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
 
 **Disclaimer: ** Due to the timezone difference, there is a difference in the charttime section of the dataset, specifically the time part. Besides that the rows match and the two files have the same number of rows.
@@ -391,35 +411,34 @@ rm(list = ls())
 
 ```{r, eval=TRUE}
 library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
 library(tidyverse)
 
 # size of all arrow dataset
-calculate_directory_size <- function(dir_path) {
+calculate_directory_size = function(dir_path) {
   # List all files in the directory, including subdirectories
-  files <- list.files(dir_path, recursive = TRUE, full.names = TRUE)
+  files = list.files(dir_path, 
+                      recursive = TRUE, full.names = TRUE)
   
   # Get the size of each file
-  file_sizes <- file.info(files)$size
+  file_sizes = file.info(files)$size
   
   # Calculate the total size
-  total_size <- sum(file_sizes)
+  total_size = sum(file_sizes)
   
   # Convert to more readable units (e.g., GB)
-  total_size_gb <- total_size / (1024^3)
+  total_size_gb = total_size / (1024^3)
   
   return(total_size_gb)
 }
 
 # Replace "path/to/your/dataset_directory" with the path to your Arrow dataset directory
-dataset_size_gb <- calculate_directory_size("./labevents_parquet")
+dataset_size_gb = calculate_directory_size("./labevents_parquet")
 
 # Print the size in GB
 print(paste("Dataset size:", dataset_size_gb, "GB"))
 
+# clear current workspace to ease up memory
+rm(list = ls())
 ```
 ![](./output_datasize.png)
 
@@ -438,13 +457,15 @@ Write a few sentences to explain what is the Parquet format. Imagine you want to
 
 Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](https://arrow.apache.org/docs/r/reference/to_duckdb.html), select columns, and filter rows as in Q2.5. How long does the ingest+convert+select+filter process take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
+```{r, eval=TRUE}
+# clear current workspace to ease up memory
+rm(list = ls())
+```
+
 ```{r,eval=TRUE}
 library(duckdb)
 library(arrow)
-library(data.table)
-library(memuse)
-library(pryr)
-library(R.utils)
+
 library(tidyverse)
 
 # measure time
@@ -456,32 +477,30 @@ system.time({
     # select columns and filter using dplyer
   labevents_duckdb = labevents %>%
     select(subject_id, itemid, charttime,valuenum) %>%
-    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931))
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 
+                         50882, 51221, 51301, 50931))
 })
 ```
 ```{r, eval=TRUE}
-# slice_min(labevents_duckdb, n=10)
-
 library(tidyverse)
 
 # database is lazy so it only revolves the chunk, 
 # number of rows
 
-nrow(as_tibble(labevents_duckdb))+1
+nrow(as_tibble(labevents_duckdb)) + 1
 
 # first 10 rows
 labevents_duckdb %>%
   head(10) %>%
   collect() %>%
   print()
-```
 
-```{r, eval=TRUE}
+# This will close the connection and the in-memory database will be lost
+dbDisconnect(conn)
+
 # clear current workspace to ease up memory
 rm(list = ls())
 ```
-
-**Did not match!!**
 
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
 
@@ -501,12 +520,12 @@ zcat < ~/mimic/icu/d_items.csv.gz | head -10
 ```
 In later exercises, we are interested in the vitals for ICU patients: heart rate (220045), mean non-invasive blood pressure (220181), systolic non-invasive blood pressure (220179), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items, using the favorite method you learnt in Q2. 
 
-**Disclaimer: ** chartevents.csv is 28.1 GB so I think I prefer the Q2.3 method where we use bash to create a subset in .gz format since our source file is in .gz format, it is way more storage efficient.
+**Disclaimer: ** chartevents.csv is 28.1 GB so I think I prefer the Q2.3 method where we use bash to create a subset in .gz format since our source file is in .gz format. It is way more storage efficient than decompressing into .csv first then perform the same process.
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
 
 ```{bash}
-#| eval: false
+#| eval: True
 zcat < ~/mimic/icu/chartevents.csv.gz | awk -F, 'BEGIN {OFS=","} NR==1 \
 || $7==220045 || $7==220181 || $7==220179 || $7==223761 \
 || $7==220210 {print}' \
@@ -514,10 +533,13 @@ zcat < ~/mimic/icu/chartevents.csv.gz | awk -F, 'BEGIN {OFS=","} NR==1 \
 ```
 
 ```{bash}
+#| eval: True
 echo "number of rows including the header row"
 zcat < chartevents_filtered.csv.gz | wc -l
 ```
+
 ```{bash}
-echo "first 10 rows of chartevents_filtered"
-zcat < chartevents_filtered.csv.gz | head -n 10
+#| eval: True
+echo "first 10 rows of data of chartevents_filtered including the header row too"
+zcat < chartevents_filtered.csv.gz | head -n 11
 ```
