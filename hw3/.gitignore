@@ -1,3 +1,4 @@
 chartevents*
-labevents*
+# changed cus we do not want labevents_tble.png to be ignored
+labevents_pq
 mimic_icu_cohort.rds
