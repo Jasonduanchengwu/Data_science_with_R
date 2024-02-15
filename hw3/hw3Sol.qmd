@@ -98,14 +98,13 @@ procedures = read_csv("~/mimic/hosp/procedures_icd.csv.gz") %>%
 labevents = open_dataset("labevents_pq", format = "parquet") %>%
   filter(subject_id %in% c(sid))
 
-labevents = as_tibble(labevents) 
+labevents = as_tibble(labevents)
   
 d_procedures = read_csv("~/mimic/hosp/d_icd_procedures.csv.gz")
 procedures = left_join(procedures, d_procedures)
 
 procedures = procedures %>%
-  mutate(
-         chartdate = as.POSIXct(chartdate))
+  mutate(chartdate = as.POSIXct(chartdate))
 
 pid = str_c("Patient ", sid)
 page = str_c(patient$anchor_age, " years old")
@@ -117,19 +116,24 @@ class(procedures$long_title)
 ```
 
 ```{r, message = F, warning=F}
+# setting seed for reproducibility
+set.seed(2)
+
 Q1.1 = ggplot() +
   geom_point(data = procedures,
              aes(x = chartdate,
                  y = "Procedure",
                  shape = long_title),
              size = 3,
-             position = position_jitter(width = 0.2, height=0)) +
+             position = position_jitter(width = 0, height = 0.3)) +
+  scale_shape_manual(values = c(1:20))+
   geom_point(data = labevents,
            aes(x = charttime,
            y = "Lab"), 
            shape = 3,
            show.legend = F,
-           position = position_jitter(width = 0.2,height=0)) +
+           position = position_jitter(width = 0,height = 0.2),
+           alpha = 0.5) +
   geom_segment(data = adt,
              aes(x = intime,
                  xend = outtime,
@@ -140,6 +144,7 @@ Q1.1 = ggplot() +
   labs(y = "", x = "Calendar Time",
      title = str_c(pid, patient$gender, page, prace, sep = ", "),
      subtitle = str_c(lab_diagnoses$long_title, collapse = "\n")) +
+  theme_bw() + 
   scale_y_discrete(limits = c("Procedure", "Lab","ADT"))+
   theme(legend.position = "bottom", legend.box = "vertical", 
         legend.text = element_text(size = 6),
@@ -151,8 +156,6 @@ Q1.1 = ggplot() +
 
 ggsave(filename = "Q1.1.png", plot = Q1.1, path = "./", 
        width = 10, height = 5, units = c("in"))
-
-# some cat are not represented by shapes
 ```
 
 ![](Q1.1.png)
