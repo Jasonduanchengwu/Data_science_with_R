@@ -72,8 +72,8 @@ rm(list = ls())
 ```
 
 ```{r, message = F, warning=F}
-sid = 10001217
-# sid = 10013310
+# sid = 10001217
+sid = 10013310
 patient = read_csv("~/mimic/hosp/patients.csv.gz") %>%
   filter(subject_id == sid)
 
@@ -122,12 +122,14 @@ Q1.1 = ggplot() +
              aes(x = chartdate,
                  y = "Procedure",
                  shape = long_title),
-             size = 3) +
+             size = 3,
+             position = position_jitter(width = 0.2, height=0)) +
   geom_point(data = labevents,
            aes(x = charttime,
            y = "Lab"), 
            shape = 3,
-           show.legend = F) +
+           show.legend = F,
+           position = position_jitter(width = 0.2,height=0)) +
   geom_segment(data = adt,
              aes(x = intime,
                  xend = outtime,
@@ -139,14 +141,21 @@ Q1.1 = ggplot() +
      title = str_c(pid, patient$gender, page, prace, sep = ", "),
      subtitle = str_c(lab_diagnoses$long_title, collapse = "\n")) +
   scale_y_discrete(limits = c("Procedure", "Lab","ADT"))+
-  theme(legend.position = "bottom", legend.box = "vertical") +
+  theme(legend.position = "bottom", legend.box = "vertical", 
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(0.2, "cm"),
+        legend.title = element_text(size=6)) +
   guides(linewidth = "none",
-         shape = guide_legend(order = 1, title = "Procedure"),
+         shape = guide_legend(order = 1, title = "Procedure", nrow = 5),
          color = guide_legend(order = 2, title = "Care Unit"))
-ggsave(filename = "Q1.1.png", plot = Q1.1, path = "./", width = 8, height = 4, units = c("in"))
+
+ggsave(filename = "Q1.1.png", plot = Q1.1, path = "./", 
+       width = 10, height = 5, units = c("in"))
+
+# some cat are not represented by shapes
 ```
 
-![](./Q1.1.png)
+![](Q1.1.png)
 
 ### Q1.2 ICU stays
 
