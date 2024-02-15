@@ -73,7 +73,7 @@ rm(list = ls())
 
 ```{r, message = F, warning=F}
 sid = 10001217
-
+# sid = 10013310
 patient = read_csv("~/mimic/hosp/patients.csv.gz") %>%
   filter(subject_id == sid)
 
@@ -98,14 +98,13 @@ procedures = read_csv("~/mimic/hosp/procedures_icd.csv.gz") %>%
 labevents = open_dataset("labevents_pq", format = "parquet") %>%
   filter(subject_id %in% c(sid))
 
-labevents = as_tibble(labevents) %>%
-  mutate(charttime_count = cut(charttime, breaks = 3))
+labevents = as_tibble(labevents) 
   
 d_procedures = read_csv("~/mimic/hosp/d_icd_procedures.csv.gz")
 procedures = left_join(procedures, d_procedures)
 
 procedures = procedures %>%
-  mutate(long_title = as_factor(long_title),
+  mutate(
          chartdate = as.POSIXct(chartdate))
 
 pid = str_c("Patient ", sid)
@@ -113,8 +112,12 @@ page = str_c(patient$anchor_age, " years old")
 prace = tolower(admission$race)
 ```
 
+```{r}
+class(procedures$long_title)
+```
+
 ```{r, message = F, warning=F}
-ggplot() +
+Q1.1 = ggplot() +
   geom_point(data = procedures,
              aes(x = chartdate,
                  y = "Procedure",
@@ -140,8 +143,10 @@ ggplot() +
   guides(linewidth = "none",
          shape = guide_legend(order = 1, title = "Procedure"),
          color = guide_legend(order = 2, title = "Care Unit"))
-
+ggsave(filename = "Q1.1.png", plot = Q1.1, path = "./", width = 8, height = 4, units = c("in"))
 ```
+
+![](./Q1.1.png)
 
 ### Q1.2 ICU stays
 
