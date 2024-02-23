@@ -199,8 +199,8 @@ library(lubridate)
 library(ggplot2)
 library(stringr)
 
-sid = 10001217
-# sid = 10013310
+# sid = 10001217
+sid = 10013310
 
 icu_stay = read_csv("~/mimic/icu/icustays.csv.gz") %>%
   filter(subject_id == sid)
