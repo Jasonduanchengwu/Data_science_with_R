@@ -202,9 +202,6 @@ library(stringr)
 # sid = 10001217
 sid = 10013310
 
-icu_stay = read_csv("~/mimic/icu/icustays.csv.gz") %>%
-  filter(subject_id == sid)
-
 d_items = read_csv("~/mimic/icu/d_items.csv.gz")
 
 items = d_items %>%
@@ -221,8 +218,9 @@ chartevents_pq = chart_temp %>%
 chartevents = as_tibble(chartevents_pq)
 
 icu_data = left_join(chartevents, items)
-icu_data = left_join(icu_data, icu_stay)
+```
 
+```{r, eval = TRUE}
 # Plot
 Q1.2 = ggplot(icu_data, aes(x = charttime, y = valuenum, color = abbreviation, group = abbreviation)) +
   geom_point() +
@@ -237,9 +235,13 @@ Q1.2 = ggplot(icu_data, aes(x = charttime, y = valuenum, color = abbreviation, g
 
 # Save plot so that we can control Dim
 ggsave(filename = "Q1.2.png", plot = Q1.2, path = "./", 
-       width = 10, height = 6, units = c("in"))
+       width = 12, height = 6, units = c("in"))
 ```
 ![](./Q1.2.png)
+
+```{r, eval = T}
+rm(list = ls())
+```
 
 ## Q2. ICU stays
 
@@ -252,10 +254,30 @@ zcat < ~/mimic/icu/icustays.csv.gz | head
 
 Import `icustays.csv.gz` as a tibble `icustays_tble`. 
 
+**Answer: **
+
+```{r}
+library(tidyverse)
+icustay_tble = read_csv("~/mimic/icu/icustays.csv.gz")
+
+icustay_tble = as_tibble(icustay_tble)
+```
+
 ### Q2.2 Summary and visualization
 
 How many unique `subject_id`? Can a `subject_id` have multiple ICU stays? Summarize the number of ICU stays per `subject_id` by graphs. 
 
+**Answer: ** The number of unique `subject_id` is shown in the code below and you can have multiple stays per id. 
+
+```{r}
+(unique_subject_id_count = icustay_tble %>%
+  summarize(unique_subject_id_count = n_distinct(subject_id)) %>%
+  pull(unique_subject_id_count))
+```
+```{r}
+ggplot(data = icustay_tble, aes(x = subject_id)) +
+  geom_histogram(bins = 50920, color = "black")
+```
 ## Q3. `admissions` data
 
 Information of the patients admitted into hospital is available in `admissions.csv.gz`. See <https://mimic.mit.edu/docs/iv/modules/hosp/admissions/> for details of each field in this file. The first 10 lines are
