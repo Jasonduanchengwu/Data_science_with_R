@@ -168,6 +168,79 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 
 Do a similar visualization for the patient `10013310`.
 
+**Answer: **
+
+```{r, eval = T}
+rm(list = ls())
+```
+
+```{bash}
+#| eval: false
+gunzip -c ~/mimic/icu/chartevents.csv.gz > chartevents.csv
+```
+
+```{r,eval=FALSE}
+library(arrow)
+library(dplyr)
+
+# write data as parquet format
+chartevents_p = open_dataset("chartevents.csv", format = "csv")
+write_dataset(chartevents_p, "chartevents_pq")
+```
+
+```{r, eval = T}
+rm(list = ls())
+```
+
+```{r, warning=FALSE}
+library(arrow)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(stringr)
+
+sid = 10001217
+# sid = 10013310
+
+icu_stay = read_csv("~/mimic/icu/icustays.csv.gz") %>%
+  filter(subject_id == sid)
+
+d_items = read_csv("~/mimic/icu/d_items.csv.gz")
+
+items = d_items %>%
+  filter(itemid %in% c(220045, 220179, 220180, 220210, 223761)) %>%
+  select(itemid, abbreviation)
+
+chart_temp = open_dataset("chartevents_pq", format = "parquet")
+
+# select columns and filter using dplyer
+chartevents_pq = chart_temp %>%
+  filter(subject_id %in% sid, 
+         itemid %in% c(220045, 220179, 220180, 220210, 223761))
+
+chartevents = as_tibble(chartevents_pq)
+
+icu_data = left_join(chartevents, items)
+icu_data = left_join(icu_data, icu_stay)
+
+# Plot
+Q1.2 = ggplot(icu_data, aes(x = charttime, y = valuenum, color = abbreviation, group = abbreviation)) +
+  geom_point() +
+  geom_line() +
+  facet_grid(abbreviation ~ stay_id, scales = "free") +
+  scale_x_datetime(guide = guide_axis(n.dodge = 2)) +
+  labs(title = str_c("Patient ", sid, " ICU stays - Vitals"),
+       x = "",
+       y = "") +
+  theme_light() +
+  theme(legend.position = "none")
+
+# Save plot so that we can control Dim
+ggsave(filename = "Q1.2.png", plot = Q1.2, path = "./", 
+       width = 10, height = 6, units = c("in"))
+```
+![](./Q1.2.png)
+
 ## Q2. ICU stays
 
 `icustays.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/icu/icustays/>) contains data about Intensive Care Units (ICU) stays. The first 10 lines are
