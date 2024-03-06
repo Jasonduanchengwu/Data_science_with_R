@@ -67,8 +67,8 @@ dbListTables(con_bq)
 Connect to the `icustays` table.
 ```{r}
 # full ICU stays table
-icustays_tble <- tbl(con_bq, "icustays") |>
-  # show_query() |>
+icustays_tble <- tbl(con_bq, "icustays") %>%
+  # show_query() %>%
   print(width = Inf)
 ```
 
@@ -106,7 +106,7 @@ Connect to `chartevents` table and retrieve a subset that only contain subjects 
 
 ### Q1.7 Put things together
 
-This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble.
+This step is similar to Q7 of HW3. Using _one_ chain of pipes `%>%` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble.
 
 ```{r}
 # # TODO
@@ -130,7 +130,7 @@ if (!dir.exists("mimiciv_shiny")) {
   dir.create("mimiciv_shiny")
 }
 # save the final tibble
-mimic_icu_cohort |>
+mimic_icu_cohort %>%
   write_rds("mimiciv_shiny/mimic_icu_cohort.rds", compress = "gz")
 ```
 Close database connection and clear workspace.

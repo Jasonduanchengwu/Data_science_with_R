@@ -71,8 +71,8 @@ dbListTables(con_bq)
 Connect to the `icustays` table.
 ```{r}
 # full ICU stays table
-icustays_tble <- tbl(con_bq, "icustays") |>
-  # show_query() |>
+icustays_tble <- tbl(con_bq, "icustays") %>%
+  # show_query() %>%
   print(width = Inf)
 ```
 
@@ -81,8 +81,8 @@ icustays_tble <- tbl(con_bq, "icustays") |>
 Connect to the `admissions` table.
 ```{r}
 # full admissions table
-admissions_tble <-  tbl(con_bq, "admissions") |>
-  # show_query() |>
+admissions_tble <-  tbl(con_bq, "admissions") %>%
+  # show_query() %>%
   print(width = Inf)
 ```
 
@@ -91,8 +91,8 @@ admissions_tble <-  tbl(con_bq, "admissions") |>
 Connect to the `patients` table.
 ```{r}
 # full patients table
-patients_tble <-  tbl(con_bq, "patients") |>
-  # show_query() |>
+patients_tble <-  tbl(con_bq, "patients") %>%
+  # show_query() %>%
   print(width = Inf)
 ```
 
@@ -100,53 +100,75 @@ patients_tble <-  tbl(con_bq, "patients") |>
 
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
 ```{r}
-labevents_tble <- tbl(con_bq, "labevents") |>
-  select(subject_id, itemid, valuenum, storetime) |>
+library(janitor)
+
+fixed_columns <- c("subject_id", "stay_id")
+labevents_tble <- tbl(con_bq, "labevents") %>%
+  select(subject_id, itemid, valuenum, storetime) %>%
   filter(itemid %in% c(50912, 50971, 50983, 50902, 
-                     50882, 51221, 51301, 50931)) |>
-  right_join(icustays_tble |> 
+                     50882, 51221, 51301, 50931)) %>%
+  right_join(icustays_tble %>% 
                select(subject_id, stay_id, intime), 
-             by = "subject_id") |>
-  filter(storetime <= intime) |>
-  group_by(subject_id, stay_id, itemid) |>
-  arrange(desc(storetime), .by_group = T) |>
-  slice_max(order_by = storetime, n=1) |>
-  ungroup() |>
-  left_join(tbl(con_bq, "d_labitems"), by = "itemid") |>
-  select(subject_id, stay_id, valuenum, label) |>
-  pivot_wider(names_from = label, values_from = valuenum) |>
-  arrange(subject_id, stay_id) |>
-  rename("wbc" = "White Blood Cells") |>
-  select(subject_id, stay_id, Bicarbonate, Chloride, Creatinine, Glucose, Potassium, Sodium, Hematocrit, wbc) |>
+             by = "subject_id") %>%
+  filter(storetime <= intime) %>%
+  group_by(subject_id, stay_id, itemid) %>%
+  arrange(desc(storetime), .by_group = T) %>%
+  slice_max(order_by = storetime, n=1) %>%
+  ungroup() %>%
+  left_join(tbl(con_bq, "d_labitems"), by = "itemid") %>%
+  select(subject_id, stay_id, valuenum, label) %>%
+  pivot_wider(names_from = label, values_from = valuenum) %>%
+  arrange(subject_id, stay_id) %>%
+  rename("wbc" = "White Blood Cells") %>%
+  clean_names(case = "snake") %>%
+  select(fixed_columns, sort(setdiff(colnames(.), fixed_columns))) %>%
   print(width = Inf)
 ```
 
 ### Q1.6 `chartevents` data
 
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events during ICU stay and pivot chart events to become variables/columns. Write all steps in _one_ chain of pipes.
+
 ```{r}
-# # TODO
-chartevents_tble <- tbl(con_bq, "chartevents") |>
-  # show_query() |>
+library(janitor)
+
+fixed_columns <- c("subject_id", "stay_id")
+chartevents_tble <- tbl(con_bq, "chartevents") %>%
+  select(subject_id, itemid, charttime, valuenum, stay_id) %>%
+  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
+  right_join(icustays_tble %>%
+               select(subject_id, stay_id, intime, outtime),
+             by = c("subject_id", "stay_id")) %>%
+  filter(charttime <= outtime & charttime >= intime) %>%
+  group_by(subject_id, stay_id, itemid) %>%
+  arrange(charttime, .by_group = T) %>%
+  slice_min(order_by = charttime, n=1) %>%
+  ungroup() %>%
+  left_join(tbl(con_bq, "d_items"), by = "itemid") %>%
+  select(subject_id, stay_id, valuenum, label) %>%
+  pivot_wider(names_from = label, values_from = valuenum) %>%
+  arrange(subject_id, stay_id) %>%
+  clean_names(case = "snake") %>%
+  select(fixed_columns, sort(setdiff(colnames(.), fixed_columns))) %>%
   print(width = Inf)
 ```
 
 ### Q1.7 Put things together
 
-This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble.
+This step is similar to Q7 of HW3. Using _one_ chain of pipes `%>%` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble.
 
 ```{r}
 library(lubridate)
 
-mimic_icu_cohort <- icustays_tble |>
-  left_join(admissions_tble, by = "subject_id") |>
-  left_join(patients_tble, by = "subject_id") |>
+mimic_icu_cohort <- icustays_tble %>%
+  left_join(admissions_tble, by = "subject_id") %>%
+  left_join(patients_tble, by = "subject_id") %>%
   mutate(anchor_age_real = 
            lubridate::ymd(paste(anchor_year, "-01-01")) -
-              years(anchor_age)) |>
-  filter(anchor_age_real >= 18) |>
-  left_join(labevents_tble, by = "subject_id") |>
-  left_join(chartevents_tble, by = "subject_id") |>
+              years(anchor_age)) %>%
+  filter(anchor_age_real >= 18) %>%
+  left_join(labevents_tble, by = "subject_id") %>%
+  left_join(chartevents_tble, by = "subject_id") %>%
   collect()
 ```
 
@@ -167,7 +189,7 @@ if (!dir.exists("mimiciv_shiny")) {
   dir.create("mimiciv_shiny")
 }
 # save the final tibble
-mimic_icu_cohort |>
+mimic_icu_cohort %>%
   write_rds("mimiciv_shiny/mimic_icu_cohort.rds", compress = "gz")
 ```
 Close database connection and clear workspace.
