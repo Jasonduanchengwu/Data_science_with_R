@@ -158,17 +158,15 @@ chartevents_tble <- tbl(con_bq, "chartevents") %>%
 This step is similar to Q7 of HW3. Using _one_ chain of pipes `%>%` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble.
 
 ```{r}
-library(lubridate)
-
 mimic_icu_cohort <- icustays_tble %>%
-  left_join(admissions_tble, by = "subject_id") %>%
+  left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
   left_join(patients_tble, by = "subject_id") %>%
-  mutate(anchor_age_real = 
-           lubridate::ymd(paste(anchor_year, "-01-01")) -
-              years(anchor_age)) %>%
+  mutate(anchor_age_real = anchor_age + year(admittime) - anchor_year) %>%
   filter(anchor_age_real >= 18) %>%
-  left_join(labevents_tble, by = "subject_id") %>%
-  left_join(chartevents_tble, by = "subject_id") %>%
+  left_join(labevents_tble, by = c("subject_id", "stay_id")) %>%
+  left_join(chartevents_tble, by = c("subject_id", "stay_id")) %>%
+  arrange(subject_id, hadm_id, stay_id) %>%
+  # print(width = Inf)
   collect()
 ```
 
