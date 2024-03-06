@@ -110,9 +110,7 @@ labevents_tble <- tbl(con_bq, "labevents") |>
   filter(storetime <= intime) |>
   group_by(subject_id, stay_id, itemid) |>
   arrange(desc(storetime), .by_group = T) |>
-  mutate(row_num = row_number()) |>
-  filter(row_num == 1) |>
-  select(-row_num) |>
+  slice_max(order_by = storetime, n=1) |>
   ungroup() |>
   left_join(tbl(con_bq, "d_labitems"), by = "itemid") |>
   select(subject_id, stay_id, valuenum, label) |>
