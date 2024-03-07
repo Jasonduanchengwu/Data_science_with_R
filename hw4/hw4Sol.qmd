@@ -161,8 +161,8 @@ This step is similar to Q7 of HW3. Using _one_ chain of pipes `%>%` to perform f
 mimic_icu_cohort <- icustays_tble %>%
   left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
   left_join(patients_tble, by = "subject_id") %>%
-  mutate(anchor_age_real = anchor_age + year(admittime) - anchor_year) %>%
-  filter(anchor_age_real >= 18) %>%
+  mutate(age_intime = anchor_age + year(admittime) - anchor_year) %>%
+  filter(age_intime >= 18) %>%
   left_join(labevents_tble, by = c("subject_id", "stay_id")) %>%
   left_join(chartevents_tble, by = c("subject_id", "stay_id")) %>%
   arrange(subject_id, hadm_id, stay_id) %>%
@@ -177,6 +177,32 @@ Perform the following preprocessing steps. (i) Lump infrequent levels into "Othe
 Hint: Below is a numerical summary of my tibble after preprocessing:
 
 <iframe width=95% height="500" src="./mimic_icu_cohort_gtsummary.html"></iframe>
+
+```{r}
+library(forcats)
+library(gtsummary)
+library(tidyverse)
+library(stringr)
+
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  mutate(
+    first_careunit = fct_lump(first_careunit, n = 4, other_level = "Other"),
+    last_careunit = fct_lump(last_careunit, n = 4, other_level = "Other"),
+    admission_type = fct_lump(admission_type, n = 4, other_level = "Other"),
+    admission_location = fct_lump(admission_location, n = 3, other_level = "Other"),
+    discharge_location = fct_lump(discharge_location, n = 4, other_level = "Other")) %>%
+  mutate(race = ifelse(str_detect(race, "^ASIAN*"), "ASIAN", race), 
+         race = ifelse(str_detect(race, "^BLACK*"), "BLACK", race),
+         race = ifelse(str_detect(race, "^HISPANIC*"), "HISPANIC", race),
+         race = ifelse(str_detect(race, "^WHITE*"), "WHITE", race)) %>%
+  mutate(race = fct_other(race, keep = c("ASIAN", "BLACK", "HISPANIC", "WHITE"), other_level = "Other")) %>%
+  mutate(los_long = los >= 2)
+
+mimic_icu_cohort %>%
+  select(first_careunit, last_careunit, los, admission_type, admission_location, discharge_location, insurance, language, marital_status, race, hospital_expire_flag, gender, dod, sodium, chloride, creatinine, glucose, hematocrit, wbc, bicarbonate, temperature_fahrenheit, non_invasive_blood_pressure_diastolic, respiratory_rate, non_invasive_blood_pressure_systolic, heart_rate, age_intime, los_long) %>%
+  tbl_summary(by = los_long) %>%
+  print(width = Inf)
+```
 
 ### Q1.9 Save the final tibble
 
