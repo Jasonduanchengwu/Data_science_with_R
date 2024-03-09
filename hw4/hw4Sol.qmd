@@ -12,7 +12,7 @@ format:
     toc-location: left
     code-fold: false
 execute:
-  eval: false
+  eval: true
 ---
 
 Display machine information:
@@ -66,6 +66,7 @@ List all tables in the `mimic4_v2_2` database.
 ```{r}
 dbListTables(con_bq)
 ```
+
 ### Q1.2 `icustays` data
 
 Connect to the `icustays` table.
@@ -200,8 +201,7 @@ mimic_icu_cohort <- mimic_icu_cohort %>%
 
 mimic_icu_cohort %>%
   select(first_careunit, last_careunit, los, admission_type, admission_location, discharge_location, insurance, language, marital_status, race, hospital_expire_flag, gender, dod, sodium, chloride, creatinine, glucose, hematocrit, wbc, bicarbonate, temperature_fahrenheit, non_invasive_blood_pressure_diastolic, respiratory_rate, non_invasive_blood_pressure_systolic, heart_rate, age_intime, los_long) %>%
-  tbl_summary(by = los_long) %>%
-  print(width = Inf)
+  tbl_summary(by = los_long)
 ```
 
 ### Q1.9 Save the final tibble
