@@ -22,15 +22,16 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 ```{r}
 #| message: false
 #| warning: false
+#| error: false
 
-library(tidyverse)
-library(rsample)
+# Load libraries
+library(GGally)
+library(gtsummary)
 library(ranger)
-library(xgboost)
-library(kernlab)
-library(nnet)
-library(caret)
-library(glmnet)
+library(tidyverse)
+library(tidymodels)
+library(vip)
+library(ggplot2)
 
 # load data
 mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
@@ -39,13 +40,13 @@ mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
 # selecting features to use
 mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
   # remove features not available at intime
-  select(-c(los, outtime, last_careunit, los, discharge_location, dischtime, deathtime, edouttime, hospital_expire_flag, dod, anchor_age, anchor_year, anchor_year_group)) %>%
+  select(-c(los, outtime, last_careunit, los, discharge_location, dischtime, deathtime, edouttime, edregtime, hospital_expire_flag, dod, anchor_age, anchor_year, anchor_year_group, admit_provider_id)) %>%
+  mutate(los_long = as.factor(los_long)) %>%
   print()
 ```
 
 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 ```{r}
-#| eval: false
 set.seed(203)
 
 # sort
@@ -58,6 +59,17 @@ data_split <- initial_split(
   strata = "los_long", 
   prop = 0.5
   )
+
+mimic_train <- training(data_split)
+dim(mimic_train)
+
+mimic_test <- testing(data_split)
+dim(mimic_test)
+
+# checking for missing values
+summary(mimiciv_icu_cohort)
+
+mimiciv_icu_cohort %>% tbl_summary()
 ```
 
 3. Train and tune the models using the training set.
@@ -65,7 +77,93 @@ data_split <- initial_split(
 ### logistic regression with enet regularization
 
 ```{r}
+rf_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_train
+  ) %>%
+  
+  # mean imputation for NAs in numeric predictors
+  step_impute_mean(all_numeric_predictors()) %>%
+  
+  # mode imputation for NAs in categorical predictors
+  step_impute_mode(all_nominal_predictors()) %>%
 
+  # zero-variance filter
+  step_zv(all_numeric_predictors())
+
+rf_recipe
+
+rf_mod <- 
+  rand_forest(
+    mode = "classification",
+    # Number of predictors randomly sampled in each split
+    mtry = tune(),
+    # Number of trees in ensemble
+    trees = tune()
+  ) %>% 
+  set_engine("ranger")
+rf_mod
+
+rf_wf <- workflow() %>%
+  add_recipe(rf_recipe) %>%
+  add_model(rf_mod)
+rf_wf
+```
+#### tune_sim-anneal(), tune_race_anova(), tune_race_win_loss() (smarter search strategies/separate documents)
+
+```{r}
+param_grid <- grid_regular(
+  trees(range = c(1000L, 1200L)), 
+  mtry(range = c(1L, 3L)),
+  levels = c(2, 3)
+  )
+param_grid
+
+set.seed(203)
+
+folds <- vfold_cv(mimic_train, v = 5)
+folds
+
+rf_fit <- rf_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+rf_fit
+
+rf_fit %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  mutate(mtry = as.factor(mtry)) %>%
+  ggplot(mapping = aes(x = trees, y = mean, color = mtry)) +
+  # geom_point() + 
+  geom_line() + 
+  labs(x = "Num. of Trees", y = "CV AUC")
+
+rf_fit %>%
+  show_best("roc_auc")
+
+best_rf <- rf_fit %>%
+  select_best("roc_auc")
+best_rf
+
+# Final workflow
+final_wf <- rf_wf %>%
+  finalize_workflow(best_rf)
+final_wf
+
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf %>%
+  last_fit(data_split)
+final_fit
+
+# Test metrics
+final_fit %>% 
+  collect_metrics()
 ```
 
 ### random forest
