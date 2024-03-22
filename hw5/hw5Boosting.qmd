@@ -177,6 +177,9 @@ final_fit %>%
 ```
 
 ```{r, eval = F}
+# for easier reporducing
+read_rds("gb_wf.rds")
+
 param_grid <- grid_regular(
   tree_depth(range = c(1L, 3L)),
   learn_rate(range = c(-5, 2), trans = log10_trans()),

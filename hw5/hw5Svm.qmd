@@ -73,7 +73,9 @@ mimiciv_icu_cohort %>% tbl_summary()
 
 ### SVM with RBF Kernel workflow - too slow, machine does not run even with parallel computing
 
-```{r}
+```{r, eval = F}
+library(doParallel)
+
 svm_recipe <- 
   recipe(
     los_long ~ .,
@@ -103,11 +105,9 @@ svm_wf <- workflow() %>%
   add_recipe(svm_recipe) %>%
   add_model(svm_mod)
 svm_wf
-```
 
+write_rds(svm_wf, "svm_wf.rds")
 
-```{r}
-library(doParallel)
 param_grid <- grid_regular(
   cost(range = c(-5, 2)),
   rbf_sigma(range = c(-5, -3)),
@@ -122,25 +122,30 @@ folds
 
 # Register doParallel as the parallel backend
 # saving 1 cpu for other tasks
-registerDoParallel(cores = detectCores()-1)
+registerDoParallel(cores = detectCores()-2)
 
-# Measure system time for parallel processing
-ptm <- proc.time()
-
-svm_fit <- svm_wf %>%
+(svm_fit <- svm_wf %>%
   tune_grid(
     resamples = folds,
     grid = param_grid,
     metrics = metric_set(roc_auc, accuracy)
-    )
-
-# Capture the end time
-proc.time() - ptm
+    )) %>%
+  system.time()
 
 # stop the registered parallel backend
 stopImplicitCluster()
 
 svm_fit
+write_rds(svm_fit, "svm_fit.rds")
+```
+
+```{r}
+svm_fit %>%
+  show_best(metric = "roc_auc")
+
+best_svm <- svm_fit %>%
+  select_best(metric = "roc_auc")
+best_svm
 
 svm_fit %>%
   collect_metrics() %>%
@@ -151,13 +156,6 @@ svm_fit %>%
     geom_line() +
     labs(x = "Cost", y = "CV AUC") +
     scale_x_log10()
-
-svm_fit %>%
-  show_best("roc_auc")
-
-best_svm <- svm_fit %>%
-  select_best("roc_auc")
-best_svm
 
 # Final workflow
 final_wf <- svm_wf %>%
@@ -175,7 +173,13 @@ final_fit %>%
   collect_metrics()
 ```
 
-```{r}
+```{r, eval = F}
+library(doParallel)
+
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
 # saving results for stacked model
 svm_res <- 
   tune_grid(
@@ -184,6 +188,10 @@ svm_res <-
     grid = param_grid,
     control = control_stack_grid()
   )
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
 write_rds(svm_res, "svm_res.rds")
 ```
 
