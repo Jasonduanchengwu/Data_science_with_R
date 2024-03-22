@@ -177,6 +177,22 @@ final_fit %>%
 ```
 
 ```{r, eval = F}
+param_grid <- grid_regular(
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3, 10)
+  )
+
+set.seed(203)
+folds <- vfold_cv(mimic_train, v = 5)
+```
+
+```{r, eval = F}
+library(doParallel)
+# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
 # saving results for stacked model
 gb_res <- 
   tune_grid(
@@ -185,6 +201,10 @@ gb_res <-
     grid = param_grid,
     control = control_stack_grid()
   )
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
 write_rds(gb_res, "gb_res.rds")
 ```
 
