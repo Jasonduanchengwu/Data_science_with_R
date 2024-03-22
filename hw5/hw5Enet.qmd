@@ -19,7 +19,7 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 
 ### 1. Data preprocessing and feature engineering.
 
-**Answer: ** Done in hw5Preprocess.qmd, will be using the result rds here.
+**Answer: ** Done in hw5Preprocess.qmd, the output mimiciv_icu_cohort_postprocessed.rds will be used here as source rds.
 
 ```{r}
 #| message: false
@@ -72,28 +72,25 @@ mimiciv_icu_cohort %>% tbl_summary()
 
 #### logistic regression with enet regularization
 
-```{r}
+```{r, eval = F}
+# eval = F to only have to run model once after tuning process
+library(yardstick)
+
 logit_recipe <- 
   recipe(
     los_long ~ ., 
     data = mimic_train
   ) %>%
-  
   # mean imputation for NAs in numeric predictors
   step_impute_mean(all_numeric_predictors()) %>%
-  
   # mode imputation for NAs in categorical predictors
   step_impute_mode(all_nominal_predictors()) %>%
-
   # create traditional dummy variables
   step_dummy(all_nominal_predictors()) %>%
-  
   # zero-variance filter
   step_zv(all_numeric_predictors()) %>%
-  
   # center and scale numeric data
   step_normalize(all_numeric_predictors())
-
 logit_recipe
 
 logit_mod <- 
@@ -106,15 +103,14 @@ logit_mod
 
 logit_wf <- workflow() %>%
   add_recipe(logit_recipe) %>%
-  add_model(logit_mod) %>%
-  print()
-```
+  add_model(logit_mod)
+logit_wf
 
+write_rds(logit_wf, "logit_wf.rds")
 
-```{r}
 param_grid <- grid_regular(
   penalty(range = c(-6, 3)), 
-  mixture(),
+  mixture(range = c(0, 1)),
   levels = c(100, 5)
   )
 
@@ -132,22 +128,29 @@ folds
   system.time()
 logit_fit
 
+write_rds(logit_fit, "logit_fit.rds")
+```
+
+```{r}
+logit_fit = read_rds("logit_fit.rds")
+logit_wf = read_rds("logit_wf.rds")
+
+logit_fit %>%
+  show_best(metric = "roc_auc")
+
+best_logit <- logit_fit %>%
+  select_best(metric = "roc_auc")
+best_logit
+
 logit_fit %>%
   collect_metrics() %>%
   print(width = Inf) %>%
   filter(.metric == "roc_auc") %>%
   ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
-  geom_point() +
-  geom_line() + 
-  labs(x = "Penalty", y = "CV AUC") +
-  scale_x_log10()
-
-logit_fit %>%
-  show_best("roc_auc")
-
-best_logit <- logit_fit %>%
-  select_best("roc_auc")
-best_logit
+    geom_point() +
+    geom_line() + 
+    labs(x = "Penalty", y = "CV AUC") +
+    scale_x_log10()
 
 # Final workflow
 final_wf <- logit_wf %>%
@@ -197,4 +200,4 @@ final_tree %>%
 
 #### Interpretation of the results
 
-**Answer: ** The logistic regression with enet regularization model has an test AUC of 0.607 and an accuracy of 0.579. The most important features in predicting long ICU stays are first_careunit, heart rate, and admission location. The model is interpretable and has a decent performance.
+**Answer: ** The logistic regression with enet regularization model has an CV AUC of 0.615, test AUC of 0.607 and an accuracy of 0.579. The most important features in predicting long ICU stays are first_careunit, heart rate, and admission location. The model is interpretable and has a decent performance.
