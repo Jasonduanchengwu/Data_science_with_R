@@ -17,7 +17,7 @@ format:
 
 Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
 
-1. Data preprocessing and feature engineering.
+### 1. Data preprocessing and feature engineering.
 
 **Answer: ** Done in hw5Preprocess.qmd, will be using the result rds here.
 
@@ -41,7 +41,7 @@ library(ggplot2)
 mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
 ```
 
-2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+### 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 
 ```{r}
 set.seed(203)
@@ -69,11 +69,13 @@ summary(mimiciv_icu_cohort)
 mimiciv_icu_cohort %>% tbl_summary()
 ```
 
-3. Train and tune the models using the training set.
+### 3. Train and tune the models using the training set.
 
-### Boosting (XGBoost) workflow - too slow, machine does not run even with parallel computing
+```{r, eval = F}
+# eval = F to only have to run model once after tuning process
+library(xgboost)
+library(doParallel)
 
-```{r}
 gb_recipe <- 
   recipe(
     los_long ~ .,
@@ -102,9 +104,9 @@ gb_wf <- workflow() %>%
   add_recipe(gb_recipe) %>%
   add_model(gb_mod)
 gb_wf
-```
 
-```{r}
+write_rds(gb_wf, "gb_wf.rds")
+
 param_grid <- grid_regular(
   tree_depth(range = c(1L, 3L)),
   learn_rate(range = c(-5, 2), trans = log10_trans()),
@@ -117,6 +119,10 @@ set.seed(203)
 folds <- vfold_cv(mimic_train, v = 5)
 folds
 
+# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
 (gb_fit <- gb_wf %>%
   tune_grid(
     resamples = folds,
@@ -124,7 +130,25 @@ folds
     metrics = metric_set(roc_auc, accuracy)
     )) %>%
   system.time()
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
 gb_fit
+
+write_rds(gb_fit, "gb_fit.rds")
+```
+
+```{r}
+gb_fit = read_rds("gb_fit.rds")
+gb_wf = read_rds("gb_wf.rds")
+
+gb_fit %>%
+  show_best(metric = "roc_auc")
+
+best_gb <- gb_fit %>%
+  select_best(metric = "roc_auc")
+best_gb
 
 gb_fit %>%
   collect_metrics() %>%
@@ -132,15 +156,9 @@ gb_fit %>%
   filter(.metric == "roc_auc") %>%
   ggplot(mapping = aes(x = learn_rate, y = mean, color = factor(tree_depth))) +
   geom_point() +
+  geom_line() +
   labs(x = "Learning Rate", y = "CV AUC") +
   scale_x_log10()
-
-gb_fit %>%
-  show_best("roc_auc")
-
-best_gb <- gb_fit %>%
-  select_best("roc_auc")
-best_gb
 
 # Final workflow
 final_wf <- gb_wf %>%
@@ -158,7 +176,7 @@ final_fit %>%
   collect_metrics()
 ```
 
-```{r}
+```{r, eval = F}
 # saving results for stacked model
 gb_res <- 
   tune_grid(
@@ -170,4 +188,24 @@ gb_res <-
 write_rds(gb_res, "gb_res.rds")
 ```
 
-4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+### 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+
+#### The importance of features in predicting long ICU stays
+
+```{r}
+library(vip)
+
+#library(rpart.plot)
+final_tree <- extract_workflow(final_fit)
+final_tree
+
+final_tree %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
+
+**Answer: ** temperature fahrenheit is the most important feature in predicting long ICU stays, followed by intime in hours of the patient then the admission location.
+
+#### Interpretation of the results
+
+**Answer: ** The boosting model has an CV AUC of 0.658, test AUC of 0.657 and an accuracy of 0.612. The model is interpretable and has a decent performance.
