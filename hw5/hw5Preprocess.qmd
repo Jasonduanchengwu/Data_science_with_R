@@ -28,7 +28,7 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 library(tidyverse)
 
 # load data
-mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
+mimiciv_icu_cohort <- read_rds("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
 
 # feature engineering and preprocessing are mostly done in Homework 4
 # selecting features to use
