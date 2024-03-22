@@ -71,7 +71,7 @@ mimiciv_icu_cohort %>% tbl_summary()
 
 ### 3. Train and tune the models using the training set.
 
-#### Multi-layer perceptron (MLP)
+#### Multi-layer perceptron (MLP) - Technical difficulty with Python reticulate DOES NOT WORK
 
 ```{r, eval = F}
 library(doParallel)
@@ -144,6 +144,9 @@ write_rds(mlp_fit, "mlp_fit.rds")
 ```
 
 ```{r}
+mlp_fit <- read_rds("mlp_fit.rds")
+mlp_wf <- read_rds("mlp_wf.rds")
+
 mlp_fit %>%
   show_best(metric = "roc_auc")
 mlp_fit
