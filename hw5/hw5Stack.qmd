@@ -27,11 +27,15 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 # Load libraries
 library(GGally)
 library(gtsummary)
+library(keras)
 library(ranger)
+library(stacks)
 library(tidyverse)
 library(tidymodels)
+library(xgboost)
 library(vip)
 library(ggplot2)
+library(lubridate)
 
 # load data
 mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
@@ -39,9 +43,13 @@ mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
 # feature engineering and preprocessing are mostly done in Homework 4
 # selecting features to use
 mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
-  # remove features not available at intime
-  select(-c(los, outtime, last_careunit, los, discharge_location, dischtime, deathtime, edouttime, edregtime, hospital_expire_flag, dod, anchor_age, anchor_year, anchor_year_group, admit_provider_id)) %>%
-  mutate(los_long = as.factor(los_long)) %>%
+  mutate(los_long = as.factor(los_long),
+         intime_hour = hour(intime)) %>%
+    # remove features not available at intime
+  select(-c(los, outtime, last_careunit, los, discharge_location, dischtime, 
+            deathtime, edouttime, edregtime, hospital_expire_flag, dod, 
+            anchor_age, anchor_year, anchor_year_group, admit_provider_id, 
+            admittime, intime)) %>%
   print()
 ```
 
@@ -50,7 +58,7 @@ mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
 set.seed(203)
 
 # sort
-mimiciv_icu_cohort <- mimiciv_icu_cohort |>
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
   arrange(subject_id, hadm_id, stay_id)
 
 data_split <- initial_split(
@@ -77,7 +85,7 @@ mimiciv_icu_cohort %>% tbl_summary()
 ### logistic regression with enet regularization
 
 ```{r}
-rf_recipe <- 
+logit_recipe <- 
   recipe(
     los_long ~ ., 
     data = mimic_train
@@ -89,70 +97,74 @@ rf_recipe <-
   # mode imputation for NAs in categorical predictors
   step_impute_mode(all_nominal_predictors()) %>%
 
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) %>%
+  
   # zero-variance filter
-  step_zv(all_numeric_predictors())
+  step_zv(all_numeric_predictors()) %>%
+  
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors())
 
-rf_recipe
+logit_recipe
 
-rf_mod <- 
-  rand_forest(
-    mode = "classification",
-    # Number of predictors randomly sampled in each split
-    mtry = tune(),
-    # Number of trees in ensemble
-    trees = tune()
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
   ) %>% 
-  set_engine("ranger")
-rf_mod
+  set_engine("glmnet", standardize = FALSE)
+logit_mod
 
-rf_wf <- workflow() %>%
-  add_recipe(rf_recipe) %>%
-  add_model(rf_mod)
-rf_wf
+logit_wf <- workflow() %>%
+  add_recipe(logit_recipe) %>%
+  add_model(logit_mod) %>%
+  print()
 ```
+
 #### tune_sim-anneal(), tune_race_anova(), tune_race_win_loss() (smarter search strategies/separate documents)
 
 ```{r}
 param_grid <- grid_regular(
-  trees(range = c(1000L, 1200L)), 
-  mtry(range = c(1L, 3L)),
-  levels = c(2, 3)
+  penalty(range = c(-6, 3)), 
+  mixture(),
+  levels = c(100, 5)
   )
-param_grid
 
 set.seed(203)
 
 folds <- vfold_cv(mimic_train, v = 5)
 folds
 
-rf_fit <- rf_wf %>%
+(logit_fit <- logit_wf %>%
   tune_grid(
     resamples = folds,
     grid = param_grid,
     metrics = metric_set(roc_auc, accuracy)
-    )
-rf_fit
+    )) %>%
+  system.time()
+logit_fit
 
-rf_fit %>%
+logit_fit %>%
   collect_metrics() %>%
   print(width = Inf) %>%
   filter(.metric == "roc_auc") %>%
-  mutate(mtry = as.factor(mtry)) %>%
-  ggplot(mapping = aes(x = trees, y = mean, color = mtry)) +
-  # geom_point() + 
+  ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
+  geom_point() +
   geom_line() + 
-  labs(x = "Num. of Trees", y = "CV AUC")
+  labs(x = "Penalty", y = "CV AUC") +
+  scale_x_log10()
 
-rf_fit %>%
+logit_fit %>%
   show_best("roc_auc")
 
-best_rf <- rf_fit %>%
+best_logit <- logit_fit %>%
   select_best("roc_auc")
-best_rf
+best_logit
 
 # Final workflow
-final_wf <- rf_wf %>%
-  finalize_workflow(best_rf)
+final_wf <- logit_wf %>%
+  finalize_workflow(best_logit)
 final_wf
 
 # Fit the whole training set, then predict the test cases
@@ -165,13 +177,5 @@ final_fit
 final_fit %>% 
   collect_metrics()
 ```
-
-### random forest
-
-### boosting
-
-### SVM
-
-
 
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
