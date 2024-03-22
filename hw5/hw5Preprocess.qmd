@@ -19,7 +19,7 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 
 ### 1. Data preprocessing and feature engineering.
 
-```{r}
+```{r, eval = F}
 #| message: false
 #| warning: false
 #| error: false
