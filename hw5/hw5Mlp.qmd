@@ -42,6 +42,7 @@ mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
 ```
 
 ### 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
 ```{r}
 set.seed(203)
 
@@ -72,28 +73,25 @@ mimiciv_icu_cohort %>% tbl_summary()
 
 #### Multi-layer perceptron (MLP)
 
-```{r}
+```{r, eval = F}
+library(doParallel)
+
+# eval = F to only have to run model once after tuning process
 mlp_recipe <- 
   recipe(
     los_long ~ ., 
     data = mimic_train
   ) %>%
-  
   # mean imputation for NAs in numeric predictors
   step_impute_mean(all_numeric_predictors()) %>%
-  
   # mode imputation for NAs in categorical predictors
   step_impute_mode(all_nominal_predictors()) %>%
-
   # create traditional dummy variables
   step_dummy(all_nominal_predictors()) %>%
-  
   # zero-variance filter
   step_zv(all_numeric_predictors()) %>%
-  
   # center and scale numeric data
   step_normalize(all_numeric_predictors())
-
 mlp_recipe
 
 mlp_mod <- 
@@ -109,13 +107,10 @@ mlp_mod
 
 mlp_wf <- workflow() %>%
   add_recipe(mlp_recipe) %>%
-  add_model(mlp_mod) %>%
-  print()
-```
+  add_model(mlp_mod)
+mlp_wf
 
-
-```{r}
-library(doParallel)
+write_rds(mlp_wf, "mlp_wf.rds")
 
 param_grid <- grid_regular(
   hidden_units(range = c(1, 3)),
@@ -130,7 +125,7 @@ folds <- vfold_cv(mimic_train, v = 3)
 folds
 
 # saving 1 cpu for other tasks
-registerDoParallel(cores = detectCores()-1)
+registerDoParallel(cores = detectCores()-2)
 
 (mlp_fit <- mlp_wf %>%
   tune_grid(
@@ -142,10 +137,20 @@ registerDoParallel(cores = detectCores()-1)
 
 # stop the registered parallel backend
 stopImplicitCluster()
+
+mlp_fit
+
+write_rds(mlp_fit, "mlp_fit.rds")
 ```
 
 ```{r}
+mlp_fit %>%
+  show_best(metric = "roc_auc")
 mlp_fit
+
+best_mlp <- mlp_fit %>%
+  select_best(metric = "roc_auc")
+best_mlp
 
 mlp_fit %>%
   collect_metrics() %>%
@@ -157,13 +162,6 @@ mlp_fit %>%
     geom_line() +
     labs(x = "Dropout Rate", y = "CV AUC") +
     scale_x_log10()
-
-mlp_fit %>%
-  show_best("roc_auc")
-
-best_mlp <- mlp_fit %>%
-  select_best("roc_auc")
-best_mlp
 
 # Final workflow
 final_wf <- mlp_wf %>%
@@ -195,7 +193,7 @@ write_rds(mlp_res, "mlp_res.rds")
 
 ### 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
-#### The importance of features in predicting long ICU stays
+#### 4.1 The importance of features in predicting long ICU stays
 
 ```{r}
 library(vip)
@@ -211,6 +209,6 @@ final_tree %>%
 
 **Answer: ** first_careunit is the most important feature in predicting long ICU stays, followed by heart rate of the patient then the admission location.
 
-#### Interpretation of the results
+#### 4.2 Interpretation of the results
 
-**Answer: ** The logistic regression with enet regularization model has an test AUC of 0.607 and an accuracy of 0.579. The most important features in predicting long ICU stays are first_careunit, heart rate, and admission location. The model is interpretable and has a decent performance.
+**Answer: ** The multi-layer perceptron model has an test AUC of 0.607 and an accuracy of 0.579. The most important features in predicting long ICU stays are first_careunit, heart rate, and admission location. The model is interpretable and has a decent performance.
