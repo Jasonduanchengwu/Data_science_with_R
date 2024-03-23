@@ -1,0 +1,81 @@
+---
+title: "Biostat 203B Homework 5"
+subtitle: Due Mar 22 @ 11:59PM
+author: "Chengwu Duan and 606332825"
+format:
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-sections: false
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    code-fold: false
+---
+
+## Predicting ICU duration
+
+**Answer ** This is the general instructions for my submissions of this homework. I will provide the detailed code and results in their respective individual .qmd namely, "hw5Preprocess.qmd", "hw5Enet.qmd", "hw5Boosting.qmd", "hw5Mlp.qmd", "hw5Stack.qmd".
+
+IGNORE hw5Svm.qmd as I have not implemented SVM in this homework, I merely attempted it and failed to due to computational limitations. I am uploading it because I want to work on this after this course has ended.
+
+### 1. 
+
+Data preprocessing and feature engineering.
+
+**Answer: ** Done in hw5Preprocess.qmd, the output mimiciv_icu_cohort_postprocessed.rds will be used for all models as source rds.
+
+### 2. 
+
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
+**Answer: ** This spliting below is used by all models in this homework. The output is mimic_train and mimic_test as shown by the code below.
+
+```{r, eval = F}
+set.seed(203)
+
+# sort
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  arrange(subject_id, hadm_id, stay_id)
+
+data_split <- initial_split(
+  mimiciv_icu_cohort, 
+  # stratify by los_long
+  strata = "los_long", 
+  prop = 0.5
+  )
+
+mimic_train <- training(data_split)
+dim(mimic_train)
+
+mimic_test <- testing(data_split)
+dim(mimic_test)
+
+# checking for missing values
+summary(mimiciv_icu_cohort)
+
+mimiciv_icu_cohort %>% tbl_summary()
+```
+
+### 3. 
+
+Train and tune the models using the training set.
+
+**Answer: ** I have trained and tuned logistic regression with enet regularization (hw5Enet.qmd), Boosting (hw5Boosting.qmd) and Multi-layer Perceptron (hw5Mlp.qmd) using the pre-processed dataset in hw5Preprocess.qmd, the output results are saved as *res.rds to be used in the Ensemble stacked model (hw5Stack.qmd). 
+
+Due to my limited computational resources (4gb RAM), I have saved result.rds on most of the computing intensive steps with eval set to false, so that the qmds can be rendered without issue. Please run the qmds with eval set to true to re-run the models if you want to reproduce the results. Hope you understand this technical difficulty I am facing.
+
+### 4. 
+
+Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+
+**Answer: ** The individual performance are shown in their respective qmds, but in general this is the table that shows the comparisons of all their cv auc and test auc. 
+
+| Method | CV $AUC$ | Test $AUC$ |
+|:------:|:------:|:------:|
+| Elastic Net   | 0.615 | 0.607   |
+| Boosting      | 0.658 | 0.657   |
+| MLP           | 0.620 | 0.618   |
+| Ensemble      | NA    | 0.659   |
+
+the ensemble model has the best performance with AUC of 0.659. However we lose some interpretability with the lack of accuracy metrics, so I would say boosting was a good alternative to sacrifice some test AUC for accuracy metrics. The important features include temperature_fahrenheit, heart rate, wbc and first_careunit.
