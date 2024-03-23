@@ -17,7 +17,11 @@ format:
 
 Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
 
-1. Data preprocessing and feature engineering.
+### 1. 
+
+Data preprocessing and feature engineering.
+
+**Answer: ** Done in hw5Preprocess.qmd, the output mimiciv_icu_cohort_postprocessed.rds will be used here as source rds.
 
 ```{r}
 #| message: false
@@ -27,33 +31,22 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 # Load libraries
 library(GGally)
 library(gtsummary)
-library(keras)
 library(ranger)
+library(keras)
 library(stacks)
 library(tidyverse)
 library(tidymodels)
-library(xgboost)
 library(vip)
 library(ggplot2)
-library(lubridate)
 
 # load data
-mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
-
-# feature engineering and preprocessing are mostly done in Homework 4
-# selecting features to use
-mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
-  mutate(los_long = as.factor(los_long),
-         intime_hour = hour(intime)) %>%
-    # remove features not available at intime
-  select(-c(los, outtime, last_careunit, los, discharge_location, dischtime, 
-            deathtime, edouttime, edregtime, hospital_expire_flag, dod, 
-            anchor_age, anchor_year, anchor_year_group, admit_provider_id, 
-            admittime, intime)) %>%
-  print()
+mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
 ```
 
-2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+### 2. 
+
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
 ```{r}
 set.seed(203)
 
@@ -80,102 +73,133 @@ summary(mimiciv_icu_cohort)
 mimiciv_icu_cohort %>% tbl_summary()
 ```
 
-3. Train and tune the models using the training set.
+### 3. 
 
-### logistic regression with enet regularization
+Train and tune the models using the training set.
+
+#### Stacked model
 
 ```{r}
-logit_recipe <- 
+stack_recipe <- 
   recipe(
     los_long ~ ., 
     data = mimic_train
   ) %>%
-  
   # mean imputation for NAs in numeric predictors
   step_impute_mean(all_numeric_predictors()) %>%
-  
   # mode imputation for NAs in categorical predictors
   step_impute_mode(all_nominal_predictors()) %>%
-
   # create traditional dummy variables
   step_dummy(all_nominal_predictors()) %>%
-  
   # zero-variance filter
   step_zv(all_numeric_predictors()) %>%
-  
   # center and scale numeric data
   step_normalize(all_numeric_predictors())
-
-logit_recipe
-
-logit_mod <- 
-  logistic_reg(
-    penalty = tune(), 
-    mixture = tune()
-  ) %>% 
-  set_engine("glmnet", standardize = FALSE)
-logit_mod
-
-logit_wf <- workflow() %>%
-  add_recipe(logit_recipe) %>%
-  add_model(logit_mod) %>%
-  print()
+stack_recipe
 ```
 
-#### tune_sim-anneal(), tune_race_anova(), tune_race_win_loss() (smarter search strategies/separate documents)
+```{r, eval = FALSE}
+library(doParallel)
+
+logit_res <- read_rds("logit_res.rds")
+gb_res <- read_rds("gb_res.rds")
+mlp_res <- read_rds("mlp_res.rds")
+
+# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+stack_model_st <- 
+  # initialize the stack
+  stacks() %>%
+  # add candidate members
+  add_candidates(logit_res) %>%
+  add_candidates(gb_res) %>%
+  add_candidates(mlp_res) %>%
+  # determine how to combine their predictions
+  blend_predictions(
+    penalty = 10^(-7:2),
+    metrics = c("roc_auc")
+    ) %>%
+  # fit the candidates with nonzero stacking coefficients
+  fit_members()
+
+# stop the registered parallel backend
+stopImplicitCluster()
+write_rds(stack_model_st, "stack_model_st.rds")
+```
 
 ```{r}
-param_grid <- grid_regular(
-  penalty(range = c(-6, 3)), 
-  mixture(),
-  levels = c(100, 5)
-  )
+library(yardstick)
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
 
-set.seed(203)
+stack_model_st = read_rds("stack_model_st.rds")
 
-folds <- vfold_cv(mimic_train, v = 5)
-folds
-
-(logit_fit <- logit_wf %>%
-  tune_grid(
-    resamples = folds,
-    grid = param_grid,
-    metrics = metric_set(roc_auc, accuracy)
-    )) %>%
-  system.time()
-logit_fit
-
-logit_fit %>%
-  collect_metrics() %>%
-  print(width = Inf) %>%
-  filter(.metric == "roc_auc") %>%
-  ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
-  geom_point() +
-  geom_line() + 
-  labs(x = "Penalty", y = "CV AUC") +
-  scale_x_log10()
-
-logit_fit %>%
-  show_best("roc_auc")
-
-best_logit <- logit_fit %>%
-  select_best("roc_auc")
-best_logit
-
-# Final workflow
-final_wf <- logit_wf %>%
-  finalize_workflow(best_logit)
-final_wf
-
-# Fit the whole training set, then predict the test cases
-final_fit <- 
-  final_wf %>%
-  last_fit(data_split)
-final_fit
-
-# Test metrics
-final_fit %>% 
-  collect_metrics()
+autoplot(stack_model_st)
+autoplot(stack_model_st, type = "members")
+autoplot(stack_model_st, type = "weights")
+collect_parameters(stack_model_st, "logit_res")
+collect_parameters(stack_model_st, "gb_res")
+collect_parameters(stack_model_st, "mlp_res")
 ```
 
-4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+```{r}
+library(yardstick)
+
+stack_pred <- mimic_test %>%
+  bind_cols(predict(stack_model_st, ., type = "prob")) %>%
+  print(width = Inf)
+
+roc_auc(
+  stack_pred,
+  truth = los_long,
+  contains(".pred_FALSE")
+  )
+```
+
+```{r, eval = F}
+# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+stack_pred <-
+  mimic_test %>%
+  select(los_long) %>%
+  bind_cols(
+    predict(
+      stack_model_st,
+      mimic_test,
+      type = "class",
+      members = TRUE
+      )
+    ) %>%
+  print(width = Inf)
+
+# stop the registered parallel backend
+stopImplicitCluster()
+write_rds(stack_pred, "stack_model_pred.rds")
+```
+
+```{r}
+library(yardstick)
+library(tidyverse)
+stack_pred = read_rds("stack_model_pred.rds")
+
+stack_pred
+
+map(
+  colnames(stack_pred),
+  ~mean(stack_pred$los_long == pull(stack_pred, .x))
+  ) %>%
+  set_names(colnames(stack_pred)) %>%
+  as_tibble() %>%
+  pivot_longer(c(everything(), -los_long))
+```
+
+### 4. 
+
+Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+
+**Answer: ** The test AUC for the stacked model is 0.659. Relatively compared to other individual models, the stacked model has the highest AUC.
