@@ -41,7 +41,10 @@ library(ggplot2)
 mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
 ```
 
-### 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+### 2. 
+
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
 ```{r}
 set.seed(203)
 
@@ -68,7 +71,9 @@ summary(mimiciv_icu_cohort)
 mimiciv_icu_cohort %>% tbl_summary()
 ```
 
-### 3. Train and tune the models using the training set.
+### 3. 
+
+Train and tune the models using the training set.
 
 #### logistic regression with enet regularization
 
@@ -109,9 +114,9 @@ logit_wf
 write_rds(logit_wf, "logit_wf.rds")
 
 param_grid <- grid_regular(
-  penalty(range = c(-6, 3)), 
+  penalty(range = c(-6, 4)), 
   mixture(range = c(0, 1)),
-  levels = c(100, 5)
+  levels = c(10, 5)
   )
 
 set.seed(203)
@@ -168,7 +173,16 @@ final_fit %>%
   collect_metrics()
 ```
 
+
 ```{r, eval = F}
+# Saving the results for the stacked model
+
+library(doParallel)
+
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
 # saving results for stacked model
 logit_res <- 
   tune_grid(
@@ -177,10 +191,16 @@ logit_res <-
     grid = param_grid,
     control = control_stack_grid()
   )
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
 write_rds(logit_res, "logit_res.rds")
 ```
 
-### 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+### 4. 
+
+Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
 #### The importance of features in predicting long ICU stays
 
