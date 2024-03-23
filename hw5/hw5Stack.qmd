@@ -1,0 +1,205 @@
+---
+title: "Biostat 203B Homework 5"
+subtitle: Due Mar 22 @ 11:59PM
+author: "Chengwu Duan and 606332825"
+format:
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-sections: false
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    code-fold: false
+---
+
+## Predicting ICU duration
+
+Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
+
+### 1. 
+
+Data preprocessing and feature engineering.
+
+**Answer: ** Done in hw5Preprocess.qmd, the output mimiciv_icu_cohort_postprocessed.rds will be used here as source rds.
+
+```{r}
+#| message: false
+#| warning: false
+#| error: false
+
+# Load libraries
+library(GGally)
+library(gtsummary)
+library(ranger)
+library(keras)
+library(stacks)
+library(tidyverse)
+library(tidymodels)
+library(vip)
+library(ggplot2)
+
+# load data
+mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
+```
+
+### 2. 
+
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
+```{r}
+set.seed(203)
+
+# sort
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  arrange(subject_id, hadm_id, stay_id)
+
+data_split <- initial_split(
+  mimiciv_icu_cohort, 
+  # stratify by los_long
+  strata = "los_long", 
+  prop = 0.5
+  )
+
+mimic_train <- training(data_split)
+dim(mimic_train)
+
+mimic_test <- testing(data_split)
+dim(mimic_test)
+
+# checking for missing values
+summary(mimiciv_icu_cohort)
+
+mimiciv_icu_cohort %>% tbl_summary()
+```
+
+### 3. 
+
+Train and tune the models using the training set.
+
+#### Stacked model
+
+```{r}
+stack_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_train
+  ) %>%
+  # mean imputation for NAs in numeric predictors
+  step_impute_mean(all_numeric_predictors()) %>%
+  # mode imputation for NAs in categorical predictors
+  step_impute_mode(all_nominal_predictors()) %>%
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) %>%
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) %>%
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors())
+stack_recipe
+```
+
+```{r, eval = FALSE}
+library(doParallel)
+
+logit_res <- read_rds("logit_res.rds")
+gb_res <- read_rds("gb_res.rds")
+mlp_res <- read_rds("mlp_res.rds")
+
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+stack_model_st <- 
+  # initialize the stack
+  stacks() %>%
+  # add candidate members
+  add_candidates(logit_res) %>%
+  add_candidates(gb_res) %>%
+  add_candidates(mlp_res) %>%
+  # determine how to combine their predictions
+  blend_predictions(
+    penalty = 10^(-7:2),
+    metrics = c("roc_auc")
+    ) %>%
+  # fit the candidates with nonzero stacking coefficients
+  fit_members()
+
+# stop the registered parallel backend
+stopImplicitCluster()
+write_rds(stack_model_st, "stack_model_st.rds")
+```
+
+```{r}
+library(yardstick)
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+
+stack_model_st = read_rds("stack_model_st.rds")
+
+autoplot(stack_model_st)
+autoplot(stack_model_st, type = "members")
+autoplot(stack_model_st, type = "weights")
+collect_parameters(stack_model_st, "logit_res")
+collect_parameters(stack_model_st, "gb_res")
+collect_parameters(stack_model_st, "mlp_res")
+```
+
+```{r}
+library(yardstick)
+
+stack_pred <- mimic_test %>%
+  bind_cols(predict(stack_model_st, ., type = "prob")) %>%
+  print(width = Inf)
+
+roc_auc(
+  stack_pred,
+  truth = los_long,
+  contains(".pred_FALSE")
+  )
+```
+
+```{r, eval = F}
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+stack_pred <-
+  mimic_test %>%
+  select(los_long) %>%
+  bind_cols(
+    predict(
+      stack_model_st,
+      mimic_test,
+      type = "class",
+      members = TRUE
+      )
+    ) %>%
+  print(width = Inf)
+
+# stop the registered parallel backend
+stopImplicitCluster()
+write_rds(stack_pred, "stack_model_pred.rds")
+```
+
+```{r}
+library(yardstick)
+library(tidyverse)
+stack_pred = read_rds("stack_model_pred.rds")
+
+stack_pred
+
+map(
+  colnames(stack_pred),
+  ~mean(stack_pred$los_long == pull(stack_pred, .x))
+  ) %>%
+  set_names(colnames(stack_pred)) %>%
+  as_tibble() %>%
+  pivot_longer(c(everything(), -los_long))
+```
+
+### 4. 
+
+Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+
+**Answer: ** The test AUC for the stacked model is 0.659. Relatively compared to other individual models, the stacked model has the highest AUC.

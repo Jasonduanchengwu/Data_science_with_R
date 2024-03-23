@@ -1,0 +1,47 @@
+---
+title: "Biostat 203B Homework 5"
+subtitle: Due Mar 22 @ 11:59PM
+author: "Chengwu Duan and 606332825"
+format:
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-sections: false
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    code-fold: false
+---
+
+## Predicting ICU duration
+
+Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
+
+### 1. Data preprocessing and feature engineering.
+
+```{r, eval = F}
+#| message: false
+#| warning: false
+#| error: false
+
+# Load libraries
+library(tidyverse)
+
+# load data
+mimiciv_icu_cohort <- read_rds("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
+
+# feature engineering and preprocessing are mostly done in Homework 4
+# selecting features to use
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  mutate(los_long = as.factor(los_long),
+         intime_hour = hour(intime)) %>%
+    # remove features not available at intime
+  select(-c(los, outtime, last_careunit, los, discharge_location, dischtime, 
+            deathtime, edouttime, edregtime, hospital_expire_flag, dod, 
+            anchor_age, anchor_year, anchor_year_group, admit_provider_id, 
+            admittime, intime)) %>%
+  print()
+
+# save postprocessed data into rds for future use
+write_rds(mimiciv_icu_cohort, "mimiciv_icu_cohort_postprocessed.rds")
+```

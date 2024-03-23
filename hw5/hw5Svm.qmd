@@ -1,0 +1,198 @@
+---
+title: "Biostat 203B Homework 5"
+subtitle: Due Mar 22 @ 11:59PM
+author: "Chengwu Duan and 606332825"
+format:
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-sections: false
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    code-fold: false
+---
+
+## Predicting ICU duration
+
+Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
+
+1. Data preprocessing and feature engineering.
+
+**Answer: ** Done in hw5Preprocess.qmd, will be using the result rds here.
+
+```{r}
+#| message: false
+#| warning: false
+#| error: false
+
+# Load libraries
+library(GGally)
+library(gtsummary)
+library(ranger)
+library(keras)
+library(stacks)
+library(tidyverse)
+library(tidymodels)
+library(vip)
+library(ggplot2)
+
+# load data
+mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
+```
+
+2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
+```{r}
+set.seed(203)
+
+# sort
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  arrange(subject_id, hadm_id, stay_id)
+
+data_split <- initial_split(
+  mimiciv_icu_cohort, 
+  # stratify by los_long
+  strata = "los_long", 
+  prop = 0.5
+  )
+
+mimic_train <- training(data_split)
+dim(mimic_train)
+
+mimic_test <- testing(data_split)
+dim(mimic_test)
+
+# checking for missing values
+summary(mimiciv_icu_cohort)
+
+mimiciv_icu_cohort %>% tbl_summary()
+```
+
+3. Train and tune the models using the training set.
+
+### SVM with RBF Kernel workflow - too slow, machine does not run even with parallel computing
+
+```{r, eval = F}
+library(doParallel)
+
+svm_recipe <- 
+  recipe(
+    los_long ~ .,
+    data = mimic_train
+  ) %>%
+  # mean imputation for Ca
+  step_impute_mean(all_numeric_predictors()) %>%
+  # mode imputation for Thal
+  step_impute_mode(all_nominal_predictors()) %>%
+  # create traditional dummy variables (necessary for xsvmoost)
+  step_dummy(all_nominal_predictors()) %>%
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) %>%
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors())
+
+svm_mod <- 
+  svm_rbf(
+    mode = "classification",
+    cost = tune(), 
+    rbf_sigma = tune()
+  ) %>% 
+  set_engine("kernlab")
+svm_mod
+
+svm_wf <- workflow() %>%
+  add_recipe(svm_recipe) %>%
+  add_model(svm_mod)
+svm_wf
+
+write_rds(svm_wf, "svm_wf.rds")
+
+param_grid <- grid_regular(
+  cost(range = c(-5, 2)),
+  rbf_sigma(range = c(-5, -3)),
+  levels = c(8, 5)
+  )
+param_grid
+
+set.seed(203)
+
+folds <- vfold_cv(mimic_train, v = 5)
+folds
+
+# Register doParallel as the parallel backend
+# saving 1 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+(svm_fit <- svm_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )) %>%
+  system.time()
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
+svm_fit
+write_rds(svm_fit, "svm_fit.rds")
+```
+
+```{r}
+svm_fit %>%
+  show_best(metric = "roc_auc")
+
+best_svm <- svm_fit %>%
+  select_best(metric = "roc_auc")
+best_svm
+
+svm_fit %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(mapping = aes(x = cost, y = mean, color = factor(rbf_sigma))) +
+    geom_point() +
+    geom_line() +
+    labs(x = "Cost", y = "CV AUC") +
+    scale_x_log10()
+
+# Final workflow
+final_wf <- svm_wf %>%
+  finalize_workflow(best_svm)
+final_wf
+
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf %>%
+  last_fit(data_split)
+final_fit
+
+# Test metrics
+final_fit %>% 
+  collect_metrics()
+```
+
+```{r, eval = F}
+library(doParallel)
+
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+# saving results for stacked model
+svm_res <- 
+  tune_grid(
+    object = svm_wf, 
+    resamples = folds, 
+    grid = param_grid,
+    control = control_stack_grid()
+  )
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
+write_rds(svm_res, "svm_res.rds")
+```
+
+4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?

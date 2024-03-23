@@ -1,0 +1,247 @@
+---
+title: "Biostat 203B Homework 5"
+subtitle: Due Mar 22 @ 11:59PM
+author: "Chengwu Duan and 606332825"
+format:
+  html:
+    theme: cosmo
+    embed-resources: true
+    number-sections: false
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    code-fold: false
+---
+
+## Predicting ICU duration
+
+Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
+
+### 1. 
+
+Data preprocessing and feature engineering.
+
+**Answer: ** Done in hw5Preprocess.qmd, will be using the result rds here.
+
+```{r}
+#| message: false
+#| warning: false
+#| error: false
+
+# Load libraries
+library(GGally)
+library(gtsummary)
+library(ranger)
+library(nnet)
+library(stacks)
+library(tidyverse)
+library(tidymodels)
+library(vip)
+library(ggplot2)
+
+# load data
+mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
+```
+
+### 2. 
+
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+
+```{r}
+set.seed(203)
+
+# sort
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  arrange(subject_id, hadm_id, stay_id)
+
+data_split <- initial_split(
+  mimiciv_icu_cohort, 
+  # stratify by los_long
+  strata = "los_long", 
+  prop = 0.5
+  )
+
+mimic_train <- training(data_split)
+dim(mimic_train)
+
+mimic_test <- testing(data_split)
+dim(mimic_test)
+
+# checking for missing values
+summary(mimiciv_icu_cohort)
+
+mimiciv_icu_cohort %>% tbl_summary()
+```
+
+### 3. 
+
+Train and tune the models using the training set.
+
+```{r, eval = F}
+library(doParallel)
+
+# eval = F to only have to run model once after tuning process
+mlp_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_train
+  ) %>%
+  # mean imputation for NAs in numeric predictors
+  step_impute_mean(all_numeric_predictors()) %>%
+  # mode imputation for NAs in categorical predictors
+  step_impute_mode(all_nominal_predictors()) %>%
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) %>%
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) %>%
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors())
+mlp_recipe
+
+mlp_mod <- 
+  mlp(
+    mode = "classification",
+    hidden_units = tune(),
+    penalty = tune(),
+    epochs = 50,
+  ) %>% 
+  set_engine("nnet", linout = FALSE)
+mlp_mod
+
+mlp_wf <- workflow() %>%
+  add_recipe(mlp_recipe) %>%
+  add_model(mlp_mod)
+mlp_wf
+
+write_rds(mlp_wf, "mlp_wf.rds")
+
+param_grid <- grid_regular(
+  hidden_units(range = c(1, 5)),
+  penalty(range = c(-2, 3), trans = log10_trans()),
+  levels = 5
+  )
+param_grid
+
+set.seed(203)
+
+folds <- vfold_cv(mimic_train, v = 3)
+folds
+
+# saving 1 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+(mlp_fit <- mlp_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )) %>%
+  system.time()
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
+mlp_fit
+
+write_rds(mlp_fit, "mlp_fit.rds")
+```
+
+```{r}
+mlp_fit <- read_rds("mlp_fit.rds")
+mlp_wf <- read_rds("mlp_wf.rds")
+
+mlp_fit %>%
+  show_best(metric = "roc_auc")
+mlp_fit
+
+best_mlp <- mlp_fit %>%
+  select_best(metric = "roc_auc")
+best_mlp
+
+mlp_fit %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(mapping = aes(x = penalty, y = mean, 
+                       color = factor(hidden_units))) +
+    geom_point() +
+    geom_line() +
+    labs(x = "Penalty", y = "CV AUC") +
+    scale_x_log10()
+
+# Final workflow
+final_wf <- mlp_wf %>%
+  finalize_workflow(best_mlp)
+final_wf
+
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf %>%
+  last_fit(data_split)
+final_fit
+
+# Test metrics
+final_fit %>% 
+  collect_metrics()
+```
+
+```{r, eval = F}
+# for easier reporducing
+mlp_wf <- read_rds("mlp_wf.rds")
+
+param_grid <- grid_regular(
+  hidden_units(range = c(1, 5)),
+  penalty(range = c(-2, 3), trans = log10_trans()),
+  levels = 5
+  )
+
+set.seed(203)
+folds <- vfold_cv(mimic_train, v = 5)
+```
+
+```{r, eval = F}
+# Saving the results for the stacked model
+library(doParallel)
+
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
+# saving results for stacked model
+mlp_res <- 
+  tune_grid(
+    object = mlp_wf, 
+    resamples = folds, 
+    grid = param_grid,
+    control = control_stack_grid()
+  )
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
+write_rds(mlp_res, "mlp_res.rds")
+```
+
+### 4. 
+
+Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+
+#### 4.1 The importance of features in predicting long ICU stays
+
+```{r}
+library(vip)
+
+#library(rpart.plot)
+final_tree <- extract_workflow(final_fit)
+final_tree
+
+final_tree %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
+
+**Answer: ** wbc is the most important feature in predicting long ICU stays, followed by creatinine of the patient then temperature fahrenheit.
+
+#### 4.2 Interpretation of the results
+
+**Answer: ** The multi-layer perceptron model has cv AUC of 0.620 test AUC of 0.618 and an accuracy of 0.586. The model is interpretable and has a decent performance.
