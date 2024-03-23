@@ -17,7 +17,9 @@ format:
 
 Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. Your algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
 
-### 1. Data preprocessing and feature engineering.
+### 1. 
+
+Data preprocessing and feature engineering.
 
 **Answer: ** Done in hw5Preprocess.qmd, will be using the result rds here.
 
@@ -30,7 +32,7 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 library(GGally)
 library(gtsummary)
 library(ranger)
-library(keras)
+library(nnet)
 library(stacks)
 library(tidyverse)
 library(tidymodels)
@@ -41,7 +43,9 @@ library(ggplot2)
 mimiciv_icu_cohort <- read_rds("./mimiciv_icu_cohort_postprocessed.rds")
 ```
 
-### 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+### 2. 
+
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 
 ```{r}
 set.seed(203)
@@ -69,9 +73,9 @@ summary(mimiciv_icu_cohort)
 mimiciv_icu_cohort %>% tbl_summary()
 ```
 
-### 3. Train and tune the models using the training set.
+### 3. 
 
-#### Multi-layer perceptron (MLP) - Technical difficulty with Python reticulate DOES NOT WORK
+Train and tune the models using the training set.
 
 ```{r, eval = F}
 library(doParallel)
@@ -98,12 +102,11 @@ mlp_mod <-
   mlp(
     mode = "classification",
     hidden_units = tune(),
-    dropout = tune(),
-    epochs = 10,
+    penalty = tune(),
+    epochs = 50,
   ) %>% 
-  set_engine("keras", verbose = 0)
+  set_engine("nnet", linout = FALSE)
 mlp_mod
-
 
 mlp_wf <- workflow() %>%
   add_recipe(mlp_recipe) %>%
@@ -113,9 +116,9 @@ mlp_wf
 write_rds(mlp_wf, "mlp_wf.rds")
 
 param_grid <- grid_regular(
-  hidden_units(range = c(1, 3)),
-  dropout(range = c(0, 0.6)),
-  levels = 3
+  hidden_units(range = c(1, 5)),
+  penalty(range = c(-2, 3), trans = log10_trans()),
+  levels = 5
   )
 param_grid
 
@@ -159,11 +162,11 @@ mlp_fit %>%
   collect_metrics() %>%
   print(width = Inf) %>%
   filter(.metric == "roc_auc") %>%
-  ggplot(mapping = aes(x = dropout, y = mean, 
+  ggplot(mapping = aes(x = penalty, y = mean, 
                        color = factor(hidden_units))) +
     geom_point() +
     geom_line() +
-    labs(x = "Dropout Rate", y = "CV AUC") +
+    labs(x = "Penalty", y = "CV AUC") +
     scale_x_log10()
 
 # Final workflow
@@ -183,6 +186,27 @@ final_fit %>%
 ```
 
 ```{r, eval = F}
+# for easier reporducing
+mlp_wf <- read_rds("mlp_wf.rds")
+
+param_grid <- grid_regular(
+  hidden_units(range = c(1, 5)),
+  penalty(range = c(-2, 3), trans = log10_trans()),
+  levels = 5
+  )
+
+set.seed(203)
+folds <- vfold_cv(mimic_train, v = 5)
+```
+
+```{r, eval = F}
+# Saving the results for the stacked model
+library(doParallel)
+
+# Register doParallel as the parallel backend
+# saving 2 cpu for other tasks
+registerDoParallel(cores = detectCores()-2)
+
 # saving results for stacked model
 mlp_res <- 
   tune_grid(
@@ -191,10 +215,16 @@ mlp_res <-
     grid = param_grid,
     control = control_stack_grid()
   )
+
+# stop the registered parallel backend
+stopImplicitCluster()
+
 write_rds(mlp_res, "mlp_res.rds")
 ```
 
-### 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+### 4. 
+
+Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
 #### 4.1 The importance of features in predicting long ICU stays
 
@@ -210,8 +240,8 @@ final_tree %>%
   vip()
 ```
 
-**Answer: ** first_careunit is the most important feature in predicting long ICU stays, followed by heart rate of the patient then the admission location.
+**Answer: ** wbc is the most important feature in predicting long ICU stays, followed by creatinine of the patient then temperature fahrenheit.
 
 #### 4.2 Interpretation of the results
 
-**Answer: ** The multi-layer perceptron model has an test AUC of 0.607 and an accuracy of 0.579. The most important features in predicting long ICU stays are first_careunit, heart rate, and admission location. The model is interpretable and has a decent performance.
+**Answer: ** The multi-layer perceptron model has cv AUC of 0.620 test AUC of 0.618 and an accuracy of 0.586. The model is interpretable and has a decent performance.
