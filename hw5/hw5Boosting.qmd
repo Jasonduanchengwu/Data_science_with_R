@@ -125,7 +125,7 @@ set.seed(203)
 folds <- vfold_cv(mimic_train, v = 5)
 folds
 
-# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# Register doParallel as the parallel backend
 # saving 2 cpu for other tasks
 registerDoParallel(cores = detectCores()-2)
 

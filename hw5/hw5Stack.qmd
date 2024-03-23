@@ -105,7 +105,7 @@ logit_res <- read_rds("logit_res.rds")
 gb_res <- read_rds("gb_res.rds")
 mlp_res <- read_rds("mlp_res.rds")
 
-# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# Register doParallel as the parallel backend
 # saving 2 cpu for other tasks
 registerDoParallel(cores = detectCores()-2)
 
@@ -160,7 +160,7 @@ roc_auc(
 ```
 
 ```{r, eval = F}
-# Register doParallel as the parallel backend as Random Forest is computationally expensive
+# Register doParallel as the parallel backend
 # saving 2 cpu for other tasks
 registerDoParallel(cores = detectCores()-2)
 
