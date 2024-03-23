@@ -1,0 +1,12 @@
+This is another instruction readme to show the entire workflow I did for the homework.
+Since I have a computational limited machine, I had to break up the homework into
+multiple sections and save multiple files and .rds
+
+You should start with the hw5OverallSol file which contains my instructions for
+how I did this assignment. 
+
+Then it would be in the sequence of "hw5Preprocess.qmd", "hw5Enet.qmd", 
+"hw5Boosting.qmd", "hw5Mlp.qmd", "hw5Stack.qmd" and back to "hw5OverallSol.qmd"
+for a table summary of the performances of all the models.
+
+Have a great day!
