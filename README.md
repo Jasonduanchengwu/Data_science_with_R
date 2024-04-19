@@ -11,3 +11,10 @@
 
 ## HW2
 - Explored Apache Arrow, duckdb, and tidyverse for memory efficient ingestion
+
+## HW3
+- Built ICU cohort with patient ADT records and ICU stay information
+- Cleaned data with filtering, selection and merging of data frames
+- Created patient details visualization of overlayed plots with ggplot2
+- Created patient vitals during different ICU stays over during of stay
+- Created a finalized ICU cohort with multiple cleaned datasets
