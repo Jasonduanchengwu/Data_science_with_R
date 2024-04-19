@@ -9,5 +9,5 @@
 - Created symbolic link for ease of access of data across different machines
 - Explored Bash scripting in Unix environments (Ubuntu)
 
-# HW2
+## HW2
 - Explored Apache Arrow, duckdb, and tidyverse for memory efficient ingestion
