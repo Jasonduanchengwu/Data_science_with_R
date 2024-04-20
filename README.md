@@ -18,3 +18,9 @@
 - Created patient details visualization of overlayed plots with ggplot2
 - Created patient vitals during different ICU stays over during of stay
 - Created a finalized ICU cohort with multiple cleaned datasets
+
+## HW4
+-	Utilized cloud service (bigrquery) to eliminate memory stress on local machine
+-	Utilized gtsummary to understand the data with numeric statistics
+-	Utilized janitor package to speed up data cleaning and reformatting
+-	Utilized R shiny to create a reactive app to visualize the mimic cohort
