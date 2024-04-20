@@ -16,7 +16,11 @@
 - Built ICU cohort with patient ADT records and ICU stay information
 - Cleaned data with filtering, selection and merging of data frames
 - Created patient details visualization of overlayed plots with ggplot2
+![](./hw3/10001217_adt.png)
+![](./hw3/Q1.1.png)
 - Created patient vitals during different ICU stays over during of stay
+![](./hw3/10001217_icu.png)
+![](./hw3/Q1.2.png)
 - Created a finalized ICU cohort with multiple cleaned datasets
 
 ## HW4
