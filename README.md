@@ -24,3 +24,7 @@
 -	Utilized gtsummary to understand the data with numeric statistics
 -	Utilized janitor package to speed up data cleaning and reformatting
 -	Utilized R shiny to create a reactive app to visualize the mimic cohort
+
+# HW5
+-	Built Elastic Net, XGBoost, SVM, MLP and Ensemble model of mimic cohort
+-	Compared performance and importance of features of the models
