@@ -5,7 +5,7 @@
  - The programs are developed in R studio and in the form of Quarto Markdowns
 
 ## HW1
-- Utilized large dataset MIMIC-IV v2.2 data (100+ GB, cohort of 80k records)
+- Utilized large dataset [MIMIC-IV v2.2](https://physionet.org/content/mimiciv/2.2/) (100+ GB, cohort of 80k records)
 - Created symbolic link for ease of access of data across different machines
 - Explored Bash scripting in Unix environments (Ubuntu)
 
